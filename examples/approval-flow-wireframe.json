@@ -1,0 +1,51 @@
+{
+  "canvas": {
+    "width": 1440,
+    "height": 1024
+  },
+  "nodes": [
+    {
+      "id": "root",
+      "parentId": null,
+      "type": "frame",
+      "name": "审批流列表页",
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 1024
+    },
+    {
+      "id": "sidebar",
+      "parentId": "root",
+      "type": "section",
+      "name": "左侧侧边栏",
+      "text": "菜单 / LOGO / 导航",
+      "x": 0,
+      "y": 0,
+      "width": 220,
+      "height": 1024
+    },
+    {
+      "id": "filter",
+      "parentId": "root",
+      "type": "filter",
+      "name": "筛选区",
+      "text": "流程名称 / 状态 / 创建人 / 更新时间",
+      "x": 244,
+      "y": 96,
+      "width": 1172,
+      "height": 116
+    },
+    {
+      "id": "table",
+      "parentId": "root",
+      "type": "table",
+      "name": "列表表格",
+      "text": "审批流名称 / 适用范围 / 状态 / 创建人 / 更新时间 / 操作",
+      "x": 244,
+      "y": 236,
+      "width": 1172,
+      "height": 720
+    }
+  ]
+}

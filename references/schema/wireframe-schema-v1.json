@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Figma Drawer Unified Schema v1",
+  "type": "object",
+  "required": ["meta", "form", "wireframe"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "source"],
+      "properties": {
+        "version": { "type": "string", "const": "1.0" },
+        "source": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "form": {
+      "type": "object",
+      "required": ["pageType", "pageName"],
+      "properties": {
+        "pageType": { "type": "string" },
+        "pageName": { "type": "string" },
+        "platform": { "type": "string" },
+        "style": { "type": "object" },
+        "tableColumns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "filters": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "buttons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "wireframe": {
+      "type": "object",
+      "required": ["canvas", "nodes"],
+      "properties": {
+        "canvas": {
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "name", "x", "y", "width", "height"],
+            "properties": {
+              "id": { "type": "string" },
+              "parentId": { "type": ["string", "null"] },
+              "type": { "type": "string" },
+              "name": { "type": "string" },
+              "text": { "type": "string" },
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

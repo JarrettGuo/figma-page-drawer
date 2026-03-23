@@ -29,3 +29,26 @@ A lightweight Figma page generation skill focused on:
 ## Notes
 
 First version uses full-page regeneration instead of node-level patching.
+
+## Unified JSON workflow
+
+新增支持“线框 + 表单 → 总 JSON”的最小可用方案：
+
+- 线框示例：`examples/approval-flow-wireframe.json`
+- 表单示例：`examples/approval-flow-form.json`
+- 总 JSON 示例：`examples/approval-flow-unified.json`
+- Schema 说明：`references/schema/unified-json-guide.md`
+- Schema 文件：`references/schema/wireframe-schema-v1.json`
+- 脚本：`scripts/unified-json.js`
+
+### 合并命令
+
+```bash
+node scripts/unified-json.js --command merge   --form examples/approval-flow-form.json   --wireframe examples/approval-flow-wireframe.json   --output examples/unified-output.json
+```
+
+### 校验命令
+
+```bash
+node scripts/unified-json.js --command validate   --input examples/approval-flow-unified.json
+```
