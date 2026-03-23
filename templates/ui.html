@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>figma-page-drawer v2</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: Inter, sans-serif;
+            background: #f7f8fa;
+            color: #111827;
+        }
+        .wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 14px;
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 18px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            color: #4b5563;
+        }
+        input, select, textarea {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+        }
+        textarea {
+            min-height: 84px;
+            resize: vertical;
+        }
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .ghost {
+            background: #eef2f7;
+            color: #374151;
+        }
+        .primary {
+            background: #1677ff;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <h1>页面需求表单</h1>
+            <div class="grid">
+                <label>
+                    页面类型
+                    <select id="type">
+                        <option value="list">列表页</option>
+                        <option value="dashboard">Dashboard</option>
+                        <option value="form">表单页</option>
+                        <option value="detail">详情页</option>
+                    </select>
+                </label>
+                <label>
+                    页面名称
+                    <input id="name" value="审批流列表页" />
+                </label>
+                <label>
+                    主色
+                    <input id="primary" value="#2563EB" />
+                </label>
+                <label>
+                    是否带侧边栏
+                    <select id="sidebar">
+                        <option value="true">是</option>
+                        <option value="false">否</option>
+                    </select>
+                </label>
+                <label>
+                    表格列（逗号分隔）
+                    <input id="columns" value="审批流名称,适用范围,状态,创建人,更新时间,操作" />
+                </label>
+                <label>
+                    筛选项（逗号分隔）
+                    <input id="filters" value="流程名称,流程状态,创建人,更新时间" />
+                </label>
+            </div>
+        </div>
+        <div class="card">
+            <label>
+                补充说明
+                <textarea id="notes" placeholder="填写额外要求，例如风格、业务说明、特殊模块"></textarea>
+            </label>
+        </div>
+        <div class="actions">
+            <button class="ghost" id="cancel">取消</button>
+            <button class="primary" id="submit">生成页面</button>
+        </div>
+    </div>
+    <script>
+        const collect = () => ({
+            type: document.getElementById('type').value,
+            name: document.getElementById('name').value.trim(),
+            primary: document.getElementById('primary').value.trim(),
+            sidebar: document.getElementById('sidebar').value,
+            columns: document.getElementById('columns').value.trim(),
+            filters: document.getElementById('filters').value.trim(),
+            notes: document.getElementById('notes').value.trim(),
+        });
+
+        document.getElementById('submit').onclick = () => {
+            parent.postMessage({ pluginMessage: { type: 'generate-page', payload: collect() } }, '*');
+        };
+
+        document.getElementById('cancel').onclick = () => {
+            parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+        };
+    </script>
+</body>
+</html>

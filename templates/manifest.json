@@ -1,8 +1,9 @@
 {
-    "name": "Figma Page Drawer",
-    "id": "figma-page-drawer-local",
-    "api": "1.0.0",
-    "main": "code.js",
-    "editorType": ["figma"],
-    "documentAccess": "dynamic-page"
+  "name": "figma-page-drawer-v2",
+  "id": "figma-page-drawer-v2-local",
+  "api": "1.0.0",
+  "main": "plugin-entry-v2.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page"
 }
