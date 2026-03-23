@@ -77,3 +77,10 @@ node scripts/unified-json.js --command validate   --input examples/approval-flow
 - 一键复制 JSON
 
 使用方式：直接浏览器打开 `tool/editor.html`。
+
+
+### Extra editor enhancements
+
+- 拖拽创建区块 / 表格
+- 基础对齐参考线
+- 画布缩放（50%~200%）

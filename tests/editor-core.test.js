@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTemplateNodes, buildUnifiedJson, createNode, duplicateNode, normalizeFormInput, parseUnifiedJson, resolveParentId, serializeState, snapToGrid, splitCsv, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle } from '../tool/editor-core.js';
+import { applyAlignment, buildTemplateNodes, buildUnifiedJson, createNode, duplicateNode, findAlignmentGuides, normalizeFormInput, parseUnifiedJson, resolveParentId, serializeState, snapToGrid, splitCsv, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle } from '../tool/editor-core.js';
 
 describe('visual editor core', () => {
     it('creates node with defaults and grid snap', () => {
@@ -53,6 +53,14 @@ describe('visual editor core', () => {
         const parsed = parseUnifiedJson({ form: { pageType: 'list', pageName: '审批流列表页' }, wireframe: { canvas: { width: 100, height: 100 }, nodes: [{ id: 'root' }, { id: 'n1', parentId: 'root', type: 'section', name: 'A', title: 'A', text: '', x: 0, y: 0, width: 10, height: 10 }] } });
         expect(parsed.form.pageName).toBe('审批流列表页');
         expect(parsed.nodes.length).toBe(1);
+    });
+
+    it('finds and applies alignment guides', () => {
+        const base = createNode({ id: 'a', x: 80, y: 160 });
+        const moved = createNode({ id: 'b', x: 84, y: 155 });
+        const guides = findAlignmentGuides(moved, [base, moved]);
+        expect(guides.x).toBe(80);
+        expect(applyAlignment(moved, guides).x).toBe(80);
     });
 
     it('splits csv safely', () => {

@@ -19,6 +19,7 @@ export const DEFAULT_CANVAS = {
 };
 
 export const GRID_SIZE = 8;
+export const ALIGN_THRESHOLD = 8;
 
 export const NODE_TYPE_META = {
     section: { label: '区块', color: '#DBEAFE' },
@@ -101,12 +102,34 @@ export function resolveParentId(nodes, activeId, preferredParentId = 'root') {
     return node.type === 'section' || node.type === 'frame' ? node.id : (node.parentId || preferredParentId);
 }
 
-export function updateNodePosition(node, deltaX, deltaY) {
+export function findAlignmentGuides(node, nodes) {
+    const guides = { x: null, y: null };
+    nodes.filter((item) => item.id !== node.id).forEach((item) => {
+        if (Math.abs(item.x - node.x) <= ALIGN_THRESHOLD) {
+            guides.x = item.x;
+        }
+        if (Math.abs(item.y - node.y) <= ALIGN_THRESHOLD) {
+            guides.y = item.y;
+        }
+    });
+    return guides;
+}
+
+export function applyAlignment(node, guides) {
     return {
+        ...node,
+        x: guides.x ?? node.x,
+        y: guides.y ?? node.y,
+    };
+}
+
+export function updateNodePosition(node, deltaX, deltaY, guides = null) {
+    const moved = {
         ...node,
         x: Math.max(0, snapToGrid(node.x + deltaX)),
         y: Math.max(0, snapToGrid(node.y + deltaY)),
     };
+    return guides ? applyAlignment(moved, guides) : moved;
 }
 
 export function updateNodeSize(node, deltaWidth, deltaHeight) {
