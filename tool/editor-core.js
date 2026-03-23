@@ -99,6 +99,13 @@ export function updateNodeSize(node, deltaWidth, deltaHeight) {
     };
 }
 
+export function updateNodeText(node, text) {
+    return {
+        ...node,
+        text: String(text || ''),
+    };
+}
+
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
     return {
         meta: {

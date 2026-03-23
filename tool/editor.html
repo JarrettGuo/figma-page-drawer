@@ -18,21 +18,24 @@
         .canvas {
             position: relative; width: 1440px; height: 1024px; background: #fff; border: 1px solid #d1d5db;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            background-image:
-                linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+            background-image: linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
             background-size: 8px 8px;
         }
         .node {
-            position: absolute; border: 1px dashed #6b7280; background: rgba(59, 130, 246, 0.08);
-            padding: 8px; cursor: move; overflow: hidden; user-select: none;
+            position: absolute; border: 1px dashed #6b7280; background: rgba(59, 130, 246, 0.08); padding: 8px;
+            cursor: move; overflow: hidden; user-select: none;
         }
         .node.active { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
         .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
-        .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; }
+        .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; }
         .resize-handle {
             position: absolute; width: 10px; height: 10px; right: -5px; bottom: -5px;
             background: #1677ff; border-radius: 50%; cursor: se-resize;
+        }
+        .inline-editor {
+            position: absolute; z-index: 20; border: 1px solid #1677ff; border-radius: 8px; padding: 8px;
+            resize: none; font-size: 12px; line-height: 1.4; outline: none; background: rgba(255,255,255,0.98);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
         }
         label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-bottom: 10px; }
         textarea { min-height: 120px; }
@@ -43,7 +46,7 @@
     <div class="app">
         <aside class="panel">
             <h1>线框区</h1>
-            <div class="hint">支持拖拽位置、右下角缩放、8px 网格吸附。新增子区块时会优先挂到当前选中的容器下。</div>
+            <div class="hint">支持拖拽位置、右下角缩放、8px 网格吸附。双击区块可直接在图形内部写说明文字。</div>
             <div class="toolbar">
                 <button id="add-section">新增区块</button>
                 <button id="add-filter">新增筛选区</button>
@@ -88,13 +91,14 @@
         </aside>
     </div>
     <script type="module">
-        import { createNode, normalizeFormInput, serializeState, resolveParentId, updateNodePosition, updateNodeSize, snapToGrid } from './editor-core.js';
+        import { createNode, normalizeFormInput, serializeState, resolveParentId, updateNodePosition, updateNodeSize, updateNodeText, snapToGrid } from './editor-core.js';
         const canvas = document.getElementById('canvas');
         const output = document.getElementById('output');
         const formIds = ['pageType', 'pageName', 'platform', 'colorPrimary', 'radius', 'density', 'tableColumns', 'filters', 'buttons', 'notes'];
         let nodes = [];
         let activeId = null;
         let dragState = null;
+        let inlineEditor = null;
 
         const render = () => {
             canvas.innerHTML = '';
@@ -109,6 +113,7 @@
                 el.innerHTML = `<div class="node-title">${node.name}</div><div class="node-text">${node.text || node.type}</div>`;
                 el.addEventListener('mousedown', (event) => startDrag(event, node.id, 'move'));
                 el.addEventListener('click', () => selectNode(node.id));
+                el.addEventListener('dblclick', (event) => openInlineEditor(event, node.id));
                 const resizeHandle = document.createElement('div');
                 resizeHandle.className = 'resize-handle';
                 resizeHandle.addEventListener('mousedown', (event) => startDrag(event, node.id, 'resize'));
@@ -126,17 +131,7 @@
         const addNode = (type) => {
             const labels = { section: '区块', filter: '筛选区', table: '表格区', button: '按钮区' };
             const parentId = resolveParentId(nodes, activeId, 'root');
-            const node = createNode({
-                id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                type,
-                parentId,
-                name: labels[type] || '区块',
-                text: labels[type] || '区块说明',
-                x: 64 + nodes.length * 16,
-                y: 64 + nodes.length * 16,
-                width: type === 'table' ? 544 : 256,
-                height: type === 'table' ? 320 : 120,
-            });
+            const node = createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId, name: labels[type] || '区块', text: labels[type] || '区块说明', x: 64 + nodes.length * 16, y: 64 + nodes.length * 16, width: type === 'table' ? 544 : 256, height: type === 'table' ? 320 : 120 });
             nodes.push(node);
             activeId = node.id;
             render();
@@ -162,17 +157,7 @@
         const updateNode = () => {
             const index = nodes.findIndex((item) => item.id === activeId);
             if (index < 0) { return; }
-            nodes[index] = {
-                ...nodes[index],
-                parentId: document.getElementById('nodeParentId').value || 'root',
-                type: document.getElementById('nodeType').value,
-                name: document.getElementById('nodeName').value,
-                text: document.getElementById('nodeText').value,
-                x: snapToGrid(document.getElementById('nodeX').value),
-                y: snapToGrid(document.getElementById('nodeY').value),
-                width: Math.max(32, snapToGrid(document.getElementById('nodeWidth').value)),
-                height: Math.max(32, snapToGrid(document.getElementById('nodeHeight').value)),
-            };
+            nodes[index] = { ...nodes[index], parentId: document.getElementById('nodeParentId').value || 'root', type: document.getElementById('nodeType').value, name: document.getElementById('nodeName').value, text: document.getElementById('nodeText').value, x: snapToGrid(document.getElementById('nodeX').value), y: snapToGrid(document.getElementById('nodeY').value), width: Math.max(32, snapToGrid(document.getElementById('nodeWidth').value)), height: Math.max(32, snapToGrid(document.getElementById('nodeHeight').value)) };
             render();
             exportJson();
         };
@@ -180,6 +165,7 @@
         const deleteNode = () => {
             nodes = nodes.filter((item) => item.id !== activeId);
             activeId = null;
+            closeInlineEditor();
             render();
             exportJson();
         };
@@ -187,11 +173,57 @@
         const startDrag = (event, id, mode) => {
             event.stopPropagation();
             event.preventDefault();
+            closeInlineEditor();
             const node = nodes.find((item) => item.id === id);
             if (!node) { return; }
             activeId = id;
             dragState = { id, mode, startX: event.clientX, startY: event.clientY, originX: node.x, originY: node.y, originWidth: node.width, originHeight: node.height };
             render();
+        };
+
+        const openInlineEditor = (event, id) => {
+            event.stopPropagation();
+            closeInlineEditor();
+            const node = nodes.find((item) => item.id === id);
+            if (!node) { return; }
+            activeId = id;
+            const textarea = document.createElement('textarea');
+            textarea.className = 'inline-editor';
+            textarea.value = node.text || '';
+            textarea.style.left = `${node.x + 4}px`;
+            textarea.style.top = `${node.y + 24}px`;
+            textarea.style.width = `${Math.max(120, node.width - 8)}px`;
+            textarea.style.height = `${Math.max(48, node.height - 28)}px`;
+            textarea.addEventListener('keydown', (keyEvent) => {
+                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') {
+                    saveInlineEditor(id, textarea.value);
+                }
+                if (keyEvent.key === 'Escape') {
+                    closeInlineEditor();
+                }
+            });
+            textarea.addEventListener('blur', () => saveInlineEditor(id, textarea.value));
+            canvas.appendChild(textarea);
+            inlineEditor = textarea;
+            textarea.focus();
+            render();
+        };
+
+        const saveInlineEditor = (id, value) => {
+            const index = nodes.findIndex((item) => item.id === id);
+            if (index >= 0) {
+                nodes[index] = updateNodeText(nodes[index], value);
+            }
+            closeInlineEditor();
+            render();
+            exportJson();
+        };
+
+        const closeInlineEditor = () => {
+            if (inlineEditor && inlineEditor.parentNode) {
+                inlineEditor.parentNode.removeChild(inlineEditor);
+            }
+            inlineEditor = null;
         };
 
         window.addEventListener('mousemove', (event) => {
@@ -220,10 +252,7 @@
         document.getElementById('update-node').onclick = updateNode;
         document.getElementById('delete-node').onclick = deleteNode;
         document.getElementById('export-json').onclick = exportJson;
-        document.getElementById('copy-json').onclick = async () => {
-            if (!output.value) { exportJson(); }
-            await navigator.clipboard.writeText(output.value);
-        };
+        document.getElementById('copy-json').onclick = async () => { if (!output.value) { exportJson(); } await navigator.clipboard.writeText(output.value); };
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
         exportJson();
     </script>

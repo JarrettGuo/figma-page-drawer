@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildUnifiedJson, createNode, normalizeFormInput, resolveParentId, serializeState, snapToGrid, splitCsv, updateNodePosition, updateNodeSize } from '../tool/editor-core.js';
+import { buildUnifiedJson, createNode, normalizeFormInput, resolveParentId, serializeState, snapToGrid, splitCsv, updateNodePosition, updateNodeSize, updateNodeText } from '../tool/editor-core.js';
 
 describe('visual editor core', () => {
     it('creates node with defaults and grid snap', () => {
@@ -35,6 +35,11 @@ describe('visual editor core', () => {
         const node = createNode({ id: 'n1', width: 120, height: 120 });
         expect(updateNodePosition(node, 15, 17).x).toBe(56);
         expect(updateNodeSize(node, 23, 41).width).toBe(144);
+    });
+
+    it('updates inline text content', () => {
+        const node = createNode({ id: 'n1', text: 'old' });
+        expect(updateNodeText(node, 'new text').text).toBe('new text');
     });
 
     it('splits csv safely', () => {
