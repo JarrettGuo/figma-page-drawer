@@ -52,3 +52,19 @@ node scripts/unified-json.js --command merge   --form examples/approval-flow-for
 ```bash
 node scripts/unified-json.js --command validate   --input examples/approval-flow-unified.json
 ```
+
+## Visual editor MVP
+
+新增一个零依赖的本地可视化编辑器：
+
+- `tool/editor.html`
+- `tool/editor-core.js`
+
+能力：
+- 左侧填写表单字段
+- 中间拖拽低保真区块
+- 右侧编辑节点文字与尺寸
+- 一键导出 unified JSON
+- 一键复制 JSON
+
+使用方式：直接浏览器打开 `tool/editor.html`。

@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Figma Drawer Visual Editor</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Inter, Arial, sans-serif;
+            background: #f3f4f6;
+            color: #111827;
+        }
+        .app {
+            display: grid;
+            grid-template-columns: 320px 1fr 360px;
+            min-height: 100vh;
+        }
+        .panel {
+            background: #fff;
+            border-right: 1px solid #e5e7eb;
+            padding: 16px;
+            overflow: auto;
+        }
+        .panel.right {
+            border-right: 0;
+            border-left: 1px solid #e5e7eb;
+        }
+        h1, h2 {
+            margin: 0 0 12px;
+        }
+        .toolbar, .field-list, .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        button, select, input, textarea {
+            width: 100%;
+            font-size: 13px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            padding: 10px 12px;
+            background: #fff;
+        }
+        button.primary {
+            background: #1677ff;
+            border-color: #1677ff;
+            color: #fff;
+            cursor: pointer;
+        }
+        .canvas-wrap {
+            padding: 16px;
+            overflow: auto;
+        }
+        .canvas {
+            position: relative;
+            width: 1440px;
+            height: 1024px;
+            background: #fff;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+        .node {
+            position: absolute;
+            border: 1px dashed #6b7280;
+            background: rgba(59, 130, 246, 0.08);
+            padding: 8px;
+            cursor: move;
+            overflow: hidden;
+        }
+        .node.active {
+            border-color: #1677ff;
+            box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15);
+        }
+        .node-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .node-text {
+            font-size: 12px;
+            color: #374151;
+            white-space: pre-wrap;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        textarea { min-height: 120px; }
+        .hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <aside class="panel">
+            <h1>线框区</h1>
+            <div class="hint">先新增区块，再在中间拖拽位置。选中后可在右侧编辑文字和尺寸。</div>
+            <div class="toolbar">
+                <button id="add-section">新增区块</button>
+                <button id="add-filter">新增筛选区</button>
+                <button id="add-table">新增表格区</button>
+                <button id="add-button">新增按钮区</button>
+            </div>
+            <h2>表单区</h2>
+            <div class="field-list">
+                <label>页面类型
+                    <select id="pageType">
+                        <option value="list">列表页</option>
+                        <option value="dashboard">Dashboard</option>
+                        <option value="form">表单页</option>
+                        <option value="detail">详情页</option>
+                    </select>
+                </label>
+                <label>页面名称<input id="pageName" value="未命名页面" /></label>
+                <label>平台
+                    <select id="platform">
+                        <option value="web">web</option>
+                        <option value="mobile">mobile</option>
+                    </select>
+                </label>
+                <label>主色<input id="colorPrimary" value="#1677FF" /></label>
+                <label>圆角<input id="radius" type="number" value="12" /></label>
+                <label>密度
+                    <select id="density">
+                        <option value="compact">compact</option>
+                        <option value="medium" selected>medium</option>
+                        <option value="comfortable">comfortable</option>
+                    </select>
+                </label>
+                <label>表格列<input id="tableColumns" value="列1,列2" /></label>
+                <label>筛选项<input id="filters" value="筛选项1" /></label>
+                <label>按钮<input id="buttons" value="新建" /></label>
+                <label>备注<textarea id="notes"></textarea></label>
+            </div>
+        </aside>
+        <main class="canvas-wrap">
+            <div id="canvas" class="canvas"></div>
+        </main>
+        <aside class="panel right">
+            <h1>节点编辑 / 导出</h1>
+            <div class="hint">点击中间区块后，在这里编辑节点信息；最后一键导出 unified JSON。</div>
+            <div id="node-editor">
+                <label>节点类型<input id="nodeType" /></label>
+                <label>节点名称<input id="nodeName" /></label>
+                <label>节点文字<textarea id="nodeText"></textarea></label>
+                <label>X<input id="nodeX" type="number" /></label>
+                <label>Y<input id="nodeY" type="number" /></label>
+                <label>宽<input id="nodeWidth" type="number" /></label>
+                <label>高<input id="nodeHeight" type="number" /></label>
+                <button id="update-node">更新节点</button>
+                <button id="delete-node">删除节点</button>
+            </div>
+            <div class="actions">
+                <button class="primary" id="export-json">导出 unified JSON</button>
+                <button id="copy-json">复制 JSON</button>
+            </div>
+            <textarea id="output"></textarea>
+        </aside>
+    </div>
+    <script type="module">
+        import { createNode, normalizeFormInput, serializeState } from './editor-core.js';
+
+        const canvas = document.getElementById('canvas');
+        const output = document.getElementById('output');
+        const formIds = ['pageType', 'pageName', 'platform', 'colorPrimary', 'radius', 'density', 'tableColumns', 'filters', 'buttons', 'notes'];
+        let nodes = [];
+        let activeId = null;
+        let dragState = null;
+
+        const render = () => {
+            canvas.innerHTML = '';
+            nodes.forEach((node) => {
+                const el = document.createElement('div');
+                el.className = `node${node.id === activeId ? ' active' : ''}`;
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+                el.style.width = `${node.width}px`;
+                el.style.height = `${node.height}px`;
+                el.dataset.id = node.id;
+                el.innerHTML = `<div class="node-title">${node.name}</div><div class="node-text">${node.text || node.type}</div>`;
+                el.addEventListener('mousedown', (event) => startDrag(event, node.id));
+                el.addEventListener('click', () => selectNode(node.id));
+                canvas.appendChild(el);
+            });
+            syncNodeEditor();
+        };
+
+        const getFormData = () => normalizeFormInput(Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value])));
+
+        const exportJson = () => {
+            output.value = serializeState({
+                form: getFormData(),
+                nodes,
+                canvas: { width: 1440, height: 1024 },
+            });
+        };
+
+        const addNode = (type) => {
+            const labels = {
+                section: '区块',
+                filter: '筛选区',
+                table: '表格区',
+                button: '按钮区',
+            };
+            const node = createNode({
+                id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                type,
+                name: labels[type] || '区块',
+                text: labels[type] || '区块说明',
+                x: 60 + nodes.length * 20,
+                y: 60 + nodes.length * 20,
+                width: type === 'table' ? 540 : 260,
+                height: type === 'table' ? 320 : 120,
+            });
+            nodes.push(node);
+            activeId = node.id;
+            render();
+        };
+
+        const selectNode = (id) => {
+            activeId = id;
+            render();
+        };
+
+        const syncNodeEditor = () => {
+            const node = nodes.find((item) => item.id === activeId);
+            ['nodeType', 'nodeName', 'nodeText', 'nodeX', 'nodeY', 'nodeWidth', 'nodeHeight'].forEach((id) => {
+                document.getElementById(id).value = '';
+            });
+            if (!node) {
+                return;
+            }
+            document.getElementById('nodeType').value = node.type;
+            document.getElementById('nodeName').value = node.name;
+            document.getElementById('nodeText').value = node.text || '';
+            document.getElementById('nodeX').value = node.x;
+            document.getElementById('nodeY').value = node.y;
+            document.getElementById('nodeWidth').value = node.width;
+            document.getElementById('nodeHeight').value = node.height;
+        };
+
+        const updateNode = () => {
+            const index = nodes.findIndex((item) => item.id === activeId);
+            if (index < 0) {
+                return;
+            }
+            nodes[index] = {
+                ...nodes[index],
+                type: document.getElementById('nodeType').value,
+                name: document.getElementById('nodeName').value,
+                text: document.getElementById('nodeText').value,
+                x: Number(document.getElementById('nodeX').value),
+                y: Number(document.getElementById('nodeY').value),
+                width: Number(document.getElementById('nodeWidth').value),
+                height: Number(document.getElementById('nodeHeight').value),
+            };
+            render();
+        };
+
+        const deleteNode = () => {
+            nodes = nodes.filter((item) => item.id !== activeId);
+            activeId = null;
+            render();
+        };
+
+        const startDrag = (event, id) => {
+            event.stopPropagation();
+            const node = nodes.find((item) => item.id === id);
+            if (!node) {
+                return;
+            }
+            activeId = id;
+            dragState = {
+                id,
+                startX: event.clientX,
+                startY: event.clientY,
+                originX: node.x,
+                originY: node.y,
+            };
+            render();
+        };
+
+        window.addEventListener('mousemove', (event) => {
+            if (!dragState) {
+                return;
+            }
+            const index = nodes.findIndex((item) => item.id === dragState.id);
+            if (index < 0) {
+                return;
+            }
+            nodes[index].x = Math.max(0, dragState.originX + event.clientX - dragState.startX);
+            nodes[index].y = Math.max(0, dragState.originY + event.clientY - dragState.startY);
+            render();
+        });
+
+        window.addEventListener('mouseup', () => {
+            dragState = null;
+        });
+
+        document.getElementById('add-section').onclick = () => addNode('section');
+        document.getElementById('add-filter').onclick = () => addNode('filter');
+        document.getElementById('add-table').onclick = () => addNode('table');
+        document.getElementById('add-button').onclick = () => addNode('button');
+        document.getElementById('update-node').onclick = updateNode;
+        document.getElementById('delete-node').onclick = deleteNode;
+        document.getElementById('export-json').onclick = exportJson;
+        document.getElementById('copy-json').onclick = async () => {
+            if (!output.value) {
+                exportJson();
+            }
+            await navigator.clipboard.writeText(output.value);
+        };
+        formIds.forEach((id) => {
+            document.getElementById(id).addEventListener('change', exportJson);
+        });
+
+        exportJson();
+    </script>
+</body>
+</html>
