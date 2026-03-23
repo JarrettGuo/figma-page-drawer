@@ -18,6 +18,12 @@ export const DEFAULT_CANVAS = {
     height: 1024,
 };
 
+export const GRID_SIZE = 8;
+
+export function snapToGrid(value, grid = GRID_SIZE) {
+    return Math.round(Number(value || 0) / grid) * grid;
+}
+
 export function createNode({
     id,
     type = 'section',
@@ -35,10 +41,10 @@ export function createNode({
         type,
         name,
         text,
-        x,
-        y,
-        width,
-        height,
+        x: snapToGrid(x),
+        y: snapToGrid(y),
+        width: Math.max(GRID_SIZE, snapToGrid(width)),
+        height: Math.max(GRID_SIZE, snapToGrid(height)),
     };
 }
 
@@ -64,6 +70,33 @@ export function splitCsv(value) {
         .split(',')
         .map((item) => item.trim())
         .filter(Boolean);
+}
+
+export function resolveParentId(nodes, activeId, preferredParentId = 'root') {
+    if (!activeId) {
+        return preferredParentId;
+    }
+    const node = nodes.find((item) => item.id === activeId);
+    if (!node) {
+        return preferredParentId;
+    }
+    return node.type === 'section' || node.type === 'frame' ? node.id : (node.parentId || preferredParentId);
+}
+
+export function updateNodePosition(node, deltaX, deltaY) {
+    return {
+        ...node,
+        x: Math.max(0, snapToGrid(node.x + deltaX)),
+        y: Math.max(0, snapToGrid(node.y + deltaY)),
+    };
+}
+
+export function updateNodeSize(node, deltaWidth, deltaHeight) {
+    return {
+        ...node,
+        width: Math.max(GRID_SIZE * 4, snapToGrid(node.width + deltaWidth)),
+        height: Math.max(GRID_SIZE * 4, snapToGrid(node.height + deltaHeight)),
+    };
 }
 
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
