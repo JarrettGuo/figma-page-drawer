@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildUnifiedJson, createNode, normalizeFormInput, resolveParentId, serializeState, snapToGrid, splitCsv, updateNodePosition, updateNodeSize, updateNodeText } from '../tool/editor-core.js';
+import { buildTemplateNodes, buildUnifiedJson, createNode, duplicateNode, normalizeFormInput, parseUnifiedJson, resolveParentId, serializeState, snapToGrid, splitCsv, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle } from '../tool/editor-core.js';
 
 describe('visual editor core', () => {
     it('creates node with defaults and grid snap', () => {
@@ -37,9 +37,22 @@ describe('visual editor core', () => {
         expect(updateNodeSize(node, 23, 41).width).toBe(144);
     });
 
-    it('updates inline text content', () => {
-        const node = createNode({ id: 'n1', text: 'old' });
+    it('updates inline text and title content', () => {
+        const node = createNode({ id: 'n1', text: 'old', title: 'title-old' });
         expect(updateNodeText(node, 'new text').text).toBe('new text');
+        expect(updateNodeTitle(node, 'new title').title).toBe('new title');
+    });
+
+    it('duplicates node and builds preset nodes', () => {
+        const node = createNode({ id: 'n1', name: 'A' });
+        expect(duplicateNode(node).id).not.toBe('n1');
+        expect(buildTemplateNodes('list').length).toBeGreaterThan(0);
+    });
+
+    it('parses unified json back into editor state', () => {
+        const parsed = parseUnifiedJson({ form: { pageType: 'list', pageName: '审批流列表页' }, wireframe: { canvas: { width: 100, height: 100 }, nodes: [{ id: 'root' }, { id: 'n1', parentId: 'root', type: 'section', name: 'A', title: 'A', text: '', x: 0, y: 0, width: 10, height: 10 }] } });
+        expect(parsed.form.pageName).toBe('审批流列表页');
+        expect(parsed.nodes.length).toBe(1);
     });
 
     it('splits csv safely', () => {

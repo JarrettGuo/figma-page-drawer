@@ -20,6 +20,22 @@ export const DEFAULT_CANVAS = {
 
 export const GRID_SIZE = 8;
 
+export const NODE_TYPE_META = {
+    section: { label: '区块', color: '#DBEAFE' },
+    filter: { label: '筛选区', color: '#FEF3C7' },
+    table: { label: '表格区', color: '#DCFCE7' },
+    button: { label: '按钮区', color: '#FCE7F3' },
+    card: { label: '卡片区', color: '#EDE9FE' },
+};
+
+export const PRESET_TEMPLATES = {
+    list: [
+        { type: 'section', name: '左侧侧边栏', title: '侧边栏', text: '菜单 / LOGO / 导航', x: 0, y: 0, width: 220, height: 1024 },
+        { type: 'filter', name: '筛选区', title: '筛选区', text: '关键词 / 状态 / 创建人 / 时间', x: 244, y: 96, width: 1172, height: 116 },
+        { type: 'table', name: '表格区', title: '表格区', text: '名称 / 状态 / 创建人 / 时间 / 操作', x: 244, y: 236, width: 1172, height: 720 },
+    ],
+};
+
 export function snapToGrid(value, grid = GRID_SIZE) {
     return Math.round(Number(value || 0) / grid) * grid;
 }
@@ -28,6 +44,7 @@ export function createNode({
     id,
     type = 'section',
     name = '未命名区块',
+    title,
     text = '',
     x = 40,
     y = 40,
@@ -40,6 +57,7 @@ export function createNode({
         parentId,
         type,
         name,
+        title: title || name,
         text,
         x: snapToGrid(x),
         y: snapToGrid(y),
@@ -106,6 +124,27 @@ export function updateNodeText(node, text) {
     };
 }
 
+export function updateNodeTitle(node, title) {
+    return {
+        ...node,
+        title: String(title || ''),
+    };
+}
+
+export function duplicateNode(node) {
+    return createNode({
+        ...node,
+        id: `${node.id}_copy_${Date.now()}`,
+        x: node.x + 24,
+        y: node.y + 24,
+    });
+}
+
+export function buildTemplateNodes(templateKey) {
+    const template = PRESET_TEMPLATES[templateKey] || [];
+    return template.map((item, index) => createNode({ ...item, id: `preset_${templateKey}_${index}` }));
+}
+
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
     return {
         meta: {
@@ -122,6 +161,8 @@ export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) 
                     parentId: null,
                     type: 'frame',
                     name: form.pageName || '未命名页面',
+                    title: form.pageName || '未命名页面',
+                    text: '',
                     x: 0,
                     y: 0,
                     width: canvas.width,
@@ -130,6 +171,15 @@ export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) 
                 ...nodes,
             ],
         },
+    };
+}
+
+export function parseUnifiedJson(input) {
+    const data = typeof input === 'string' ? JSON.parse(input) : input;
+    return {
+        form: data.form || DEFAULT_FORM,
+        canvas: data.wireframe?.canvas || DEFAULT_CANVAS,
+        nodes: (data.wireframe?.nodes || []).filter((node) => node.id !== 'root'),
     };
 }
 

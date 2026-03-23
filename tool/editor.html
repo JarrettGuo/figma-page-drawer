@@ -12,6 +12,7 @@
         .panel.right { border-right: 0; border-left: 1px solid #e5e7eb; }
         h1, h2 { margin: 0 0 12px; }
         .toolbar, .field-list, .actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .row { display: flex; gap: 8px; }
         button, select, input, textarea { width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 10px 12px; background: #fff; }
         button.primary { background: #1677ff; border-color: #1677ff; color: #fff; cursor: pointer; }
         .canvas-wrap { padding: 16px; overflow: auto; }
@@ -22,21 +23,15 @@
             background-size: 8px 8px;
         }
         .node {
-            position: absolute; border: 1px dashed #6b7280; background: rgba(59, 130, 246, 0.08); padding: 8px;
-            cursor: move; overflow: hidden; user-select: none;
+            position: absolute; border: 1px dashed #6b7280; padding: 8px; cursor: move; overflow: hidden; user-select: none;
         }
         .node.active { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
-        .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+        .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+        .node-level { font-size: 11px; color: #6b7280; font-weight: 500; }
         .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; }
-        .resize-handle {
-            position: absolute; width: 10px; height: 10px; right: -5px; bottom: -5px;
-            background: #1677ff; border-radius: 50%; cursor: se-resize;
-        }
-        .inline-editor {
-            position: absolute; z-index: 20; border: 1px solid #1677ff; border-radius: 8px; padding: 8px;
-            resize: none; font-size: 12px; line-height: 1.4; outline: none; background: rgba(255,255,255,0.98);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-        }
+        .resize-handle { position: absolute; width: 10px; height: 10px; right: -5px; bottom: -5px; background: #1677ff; border-radius: 50%; cursor: se-resize; }
+        .inline-editor { position: absolute; z-index: 20; border: 1px solid #1677ff; border-radius: 8px; padding: 8px; resize: none; font-size: 12px; line-height: 1.4; outline: none; background: rgba(255,255,255,0.98); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+        .tree { font-size: 12px; color: #374151; margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; white-space: pre-wrap; }
         label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-bottom: 10px; }
         textarea { min-height: 120px; }
         .hint { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
@@ -46,12 +41,24 @@
     <div class="app">
         <aside class="panel">
             <h1>线框区</h1>
-            <div class="hint">支持拖拽位置、右下角缩放、8px 网格吸附。双击区块可直接在图形内部写说明文字。</div>
+            <div class="hint">支持层级显示、模板预设、双击写文字、快捷键复制/删除、导入 unified JSON 回显。</div>
             <div class="toolbar">
-                <button id="add-section">新增区块</button>
-                <button id="add-filter">新增筛选区</button>
-                <button id="add-table">新增表格区</button>
-                <button id="add-button">新增按钮区</button>
+                <div class="row">
+                    <button id="add-section">新增区块</button>
+                    <button id="add-filter">新增筛选区</button>
+                </div>
+                <div class="row">
+                    <button id="add-table">新增表格区</button>
+                    <button id="add-button">新增按钮区</button>
+                </div>
+                <div class="row">
+                    <button id="preset-list">插入列表页模板</button>
+                    <button id="undo">撤销</button>
+                </div>
+                <div class="row">
+                    <button id="redo">重做</button>
+                    <button id="duplicate-node">复制选中节点</button>
+                </div>
             </div>
             <h2>表单区</h2>
             <div class="field-list">
@@ -69,11 +76,12 @@
         </aside>
         <main class="canvas-wrap"><div id="canvas" class="canvas"></div></main>
         <aside class="panel right">
-            <h1>节点编辑 / 导出</h1>
-            <div class="hint">选中区块后可调坐标、尺寸、父容器。导出结果是 unified JSON。</div>
+            <h1>节点编辑 / 导入导出</h1>
+            <div class="hint">快捷键：Delete 删除；Ctrl/Cmd+D 复制；Ctrl/Cmd+Z 撤销；Ctrl/Cmd+Shift+Z 重做。</div>
             <div id="node-editor">
                 <label>父节点 ID<input id="nodeParentId" /></label>
                 <label>节点类型<input id="nodeType" /></label>
+                <label>节点标题<input id="nodeTitle" /></label>
                 <label>节点名称<input id="nodeName" /></label>
                 <label>节点文字<textarea id="nodeText"></textarea></label>
                 <label>X<input id="nodeX" type="number" /></label>
@@ -86,34 +94,78 @@
             <div class="actions">
                 <button class="primary" id="export-json">导出 unified JSON</button>
                 <button id="copy-json">复制 JSON</button>
+                <button id="import-json">从 JSON 回显</button>
             </div>
+            <div class="tree" id="tree-view"></div>
             <textarea id="output"></textarea>
         </aside>
     </div>
     <script type="module">
-        import { createNode, normalizeFormInput, serializeState, resolveParentId, updateNodePosition, updateNodeSize, updateNodeText, snapToGrid } from './editor-core.js';
+        import { buildTemplateNodes, createNode, duplicateNode, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, resolveParentId, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, snapToGrid } from './editor-core.js';
         const canvas = document.getElementById('canvas');
         const output = document.getElementById('output');
+        const treeView = document.getElementById('tree-view');
         const formIds = ['pageType', 'pageName', 'platform', 'colorPrimary', 'radius', 'density', 'tableColumns', 'filters', 'buttons', 'notes'];
         let nodes = [];
         let activeId = null;
         let dragState = null;
         let inlineEditor = null;
+        const history = [];
+        const future = [];
+
+        const snapshot = () => ({ nodes: JSON.parse(JSON.stringify(nodes)), form: getFormRaw(), activeId });
+        const pushHistory = () => { history.push(snapshot()); if (history.length > 50) { history.shift(); } future.length = 0; };
+        const restore = (state) => {
+            nodes = state.nodes || [];
+            activeId = state.activeId || null;
+            Object.entries(state.form || {}).forEach(([key, value]) => { const el = document.getElementById(key); if (el) { el.value = value; } });
+            render();
+            exportJson();
+        };
+
+        const getDepth = (node) => {
+            let depth = 0;
+            let parentId = node.parentId;
+            while (parentId && parentId !== 'root') {
+                const parent = nodes.find((item) => item.id === parentId);
+                if (!parent) { break; }
+                depth += 1;
+                parentId = parent.parentId;
+            }
+            return depth;
+        };
+
+        const renderTree = () => {
+            const lines = ['层级结构'];
+            const walk = (parentId, depth) => {
+                nodes.filter((item) => (item.parentId || 'root') === parentId).forEach((node) => {
+                    lines.push(`${'  '.repeat(depth)}- ${node.title || node.name} [${node.id}]`);
+                    walk(node.id, depth + 1);
+                });
+            };
+            walk('root', 0);
+            treeView.textContent = lines.join('\n');
+        };
 
         const render = () => {
             canvas.innerHTML = '';
-            nodes.forEach((node) => {
+            const ordered = [...nodes].sort((a, b) => getDepth(a) - getDepth(b));
+            ordered.forEach((node) => {
+                const meta = NODE_TYPE_META[node.type] || { color: '#E5E7EB' };
+                const depth = getDepth(node);
                 const el = document.createElement('div');
                 el.className = `node${node.id === activeId ? ' active' : ''}`;
                 el.style.left = `${node.x}px`;
                 el.style.top = `${node.y}px`;
                 el.style.width = `${node.width}px`;
                 el.style.height = `${node.height}px`;
+                el.style.background = meta.color;
+                el.style.zIndex = String(10 + depth);
                 el.dataset.id = node.id;
-                el.innerHTML = `<div class="node-title">${node.name}</div><div class="node-text">${node.text || node.type}</div>`;
+                el.innerHTML = `<div class="node-title"><span>${node.title || node.name}</span><span class="node-level">L${depth}</span></div><div class="node-text">${node.text || node.type}</div>`;
                 el.addEventListener('mousedown', (event) => startDrag(event, node.id, 'move'));
                 el.addEventListener('click', () => selectNode(node.id));
-                el.addEventListener('dblclick', (event) => openInlineEditor(event, node.id));
+                el.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'text'));
                 const resizeHandle = document.createElement('div');
                 resizeHandle.className = 'resize-handle';
                 resizeHandle.addEventListener('mousedown', (event) => startDrag(event, node.id, 'resize'));
@@ -121,31 +173,38 @@
                 canvas.appendChild(el);
             });
             syncNodeEditor();
+            renderTree();
         };
 
-        const getFormData = () => normalizeFormInput(Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value])));
-        const exportJson = () => {
-            output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 1440, height: 1024 } });
-        };
+        const getFormRaw = () => Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value]));
+        const getFormData = () => normalizeFormInput(getFormRaw());
+        const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 1440, height: 1024 } }); };
 
         const addNode = (type) => {
-            const labels = { section: '区块', filter: '筛选区', table: '表格区', button: '按钮区' };
+            pushHistory();
+            const labels = NODE_TYPE_META[type] || { label: '区块' };
             const parentId = resolveParentId(nodes, activeId, 'root');
-            const node = createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId, name: labels[type] || '区块', text: labels[type] || '区块说明', x: 64 + nodes.length * 16, y: 64 + nodes.length * 16, width: type === 'table' ? 544 : 256, height: type === 'table' ? 320 : 120 });
+            const node = createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId, name: labels.label, title: labels.label, text: `${labels.label}说明`, x: 64 + nodes.length * 16, y: 64 + nodes.length * 16, width: type === 'table' ? 544 : 256, height: type === 'table' ? 320 : 120 });
             nodes.push(node);
             activeId = node.id;
-            render();
-            exportJson();
+            render(); exportJson();
+        };
+
+        const insertPreset = (key) => {
+            pushHistory();
+            nodes = [...nodes, ...buildTemplateNodes(key)];
+            render(); exportJson();
         };
 
         const selectNode = (id) => { activeId = id; render(); };
 
         const syncNodeEditor = () => {
             const node = nodes.find((item) => item.id === activeId);
-            ['nodeParentId', 'nodeType', 'nodeName', 'nodeText', 'nodeX', 'nodeY', 'nodeWidth', 'nodeHeight'].forEach((id) => { document.getElementById(id).value = ''; });
+            ['nodeParentId', 'nodeType', 'nodeTitle', 'nodeName', 'nodeText', 'nodeX', 'nodeY', 'nodeWidth', 'nodeHeight'].forEach((id) => { document.getElementById(id).value = ''; });
             if (!node) { return; }
             document.getElementById('nodeParentId').value = node.parentId || 'root';
             document.getElementById('nodeType').value = node.type;
+            document.getElementById('nodeTitle').value = node.title || '';
             document.getElementById('nodeName').value = node.name;
             document.getElementById('nodeText').value = node.text || '';
             document.getElementById('nodeX').value = node.x;
@@ -157,23 +216,69 @@
         const updateNode = () => {
             const index = nodes.findIndex((item) => item.id === activeId);
             if (index < 0) { return; }
-            nodes[index] = { ...nodes[index], parentId: document.getElementById('nodeParentId').value || 'root', type: document.getElementById('nodeType').value, name: document.getElementById('nodeName').value, text: document.getElementById('nodeText').value, x: snapToGrid(document.getElementById('nodeX').value), y: snapToGrid(document.getElementById('nodeY').value), width: Math.max(32, snapToGrid(document.getElementById('nodeWidth').value)), height: Math.max(32, snapToGrid(document.getElementById('nodeHeight').value)) };
-            render();
-            exportJson();
+            pushHistory();
+            nodes[index] = { ...nodes[index], parentId: document.getElementById('nodeParentId').value || 'root', type: document.getElementById('nodeType').value, title: document.getElementById('nodeTitle').value, name: document.getElementById('nodeName').value, text: document.getElementById('nodeText').value, x: snapToGrid(document.getElementById('nodeX').value), y: snapToGrid(document.getElementById('nodeY').value), width: Math.max(32, snapToGrid(document.getElementById('nodeWidth').value)), height: Math.max(32, snapToGrid(document.getElementById('nodeHeight').value)) };
+            render(); exportJson();
         };
 
         const deleteNode = () => {
+            if (!activeId) { return; }
+            pushHistory();
             nodes = nodes.filter((item) => item.id !== activeId);
             activeId = null;
             closeInlineEditor();
-            render();
-            exportJson();
+            render(); exportJson();
+        };
+
+        const copyNode = () => {
+            const node = nodes.find((item) => item.id === activeId);
+            if (!node) { return; }
+            pushHistory();
+            const copied = duplicateNode(node);
+            nodes.push(copied);
+            activeId = copied.id;
+            render(); exportJson();
+        };
+
+        const undo = () => {
+            const state = history.pop();
+            if (!state) { return; }
+            future.push(snapshot());
+            restore(state);
+        };
+
+        const redo = () => {
+            const state = future.pop();
+            if (!state) { return; }
+            history.push(snapshot());
+            restore(state);
+        };
+
+        const importJson = () => {
+            try {
+                pushHistory();
+                const parsed = parseUnifiedJson(output.value);
+                nodes = parsed.nodes || [];
+                const form = parsed.form || {};
+                document.getElementById('pageType').value = form.pageType || 'list';
+                document.getElementById('pageName').value = form.pageName || '未命名页面';
+                document.getElementById('platform').value = form.platform || 'web';
+                document.getElementById('colorPrimary').value = form.style?.colorPrimary || '#1677FF';
+                document.getElementById('radius').value = form.style?.radius || 12;
+                document.getElementById('density').value = form.style?.density || 'medium';
+                document.getElementById('tableColumns').value = (form.tableColumns || []).join(',');
+                document.getElementById('filters').value = (form.filters || []).join(',');
+                document.getElementById('buttons').value = (form.buttons || []).join(',');
+                document.getElementById('notes').value = form.notes || '';
+                activeId = nodes[0]?.id || null;
+                render(); exportJson();
+            } catch (error) {
+                alert(`导入失败: ${error.message}`);
+            }
         };
 
         const startDrag = (event, id, mode) => {
-            event.stopPropagation();
-            event.preventDefault();
-            closeInlineEditor();
+            event.stopPropagation(); event.preventDefault(); closeInlineEditor();
             const node = nodes.find((item) => item.id === id);
             if (!node) { return; }
             activeId = id;
@@ -181,50 +286,36 @@
             render();
         };
 
-        const openInlineEditor = (event, id) => {
-            event.stopPropagation();
-            closeInlineEditor();
+        const openInlineEditor = (event, id, field = 'text') => {
+            event.stopPropagation(); closeInlineEditor();
             const node = nodes.find((item) => item.id === id);
             if (!node) { return; }
             activeId = id;
             const textarea = document.createElement('textarea');
             textarea.className = 'inline-editor';
-            textarea.value = node.text || '';
+            textarea.value = field === 'title' ? (node.title || '') : (node.text || '');
             textarea.style.left = `${node.x + 4}px`;
             textarea.style.top = `${node.y + 24}px`;
             textarea.style.width = `${Math.max(120, node.width - 8)}px`;
             textarea.style.height = `${Math.max(48, node.height - 28)}px`;
             textarea.addEventListener('keydown', (keyEvent) => {
-                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') {
-                    saveInlineEditor(id, textarea.value);
-                }
-                if (keyEvent.key === 'Escape') {
-                    closeInlineEditor();
-                }
+                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') { saveInlineEditor(id, textarea.value, field); }
+                if (keyEvent.key === 'Escape') { closeInlineEditor(); }
             });
-            textarea.addEventListener('blur', () => saveInlineEditor(id, textarea.value));
-            canvas.appendChild(textarea);
-            inlineEditor = textarea;
-            textarea.focus();
-            render();
+            textarea.addEventListener('blur', () => saveInlineEditor(id, textarea.value, field));
+            canvas.appendChild(textarea); inlineEditor = textarea; textarea.focus(); render();
         };
 
-        const saveInlineEditor = (id, value) => {
+        const saveInlineEditor = (id, value, field = 'text') => {
             const index = nodes.findIndex((item) => item.id === id);
             if (index >= 0) {
-                nodes[index] = updateNodeText(nodes[index], value);
+                pushHistory();
+                nodes[index] = field === 'title' ? updateNodeTitle(nodes[index], value) : updateNodeText(nodes[index], value);
             }
-            closeInlineEditor();
-            render();
-            exportJson();
+            closeInlineEditor(); render(); exportJson();
         };
 
-        const closeInlineEditor = () => {
-            if (inlineEditor && inlineEditor.parentNode) {
-                inlineEditor.parentNode.removeChild(inlineEditor);
-            }
-            inlineEditor = null;
-        };
+        const closeInlineEditor = () => { if (inlineEditor && inlineEditor.parentNode) { inlineEditor.parentNode.removeChild(inlineEditor); } inlineEditor = null; };
 
         window.addEventListener('mousemove', (event) => {
             if (!dragState) { return; }
@@ -239,22 +330,29 @@
             }
             render();
         });
-
-        window.addEventListener('mouseup', () => {
-            if (dragState) { exportJson(); }
-            dragState = null;
+        window.addEventListener('mouseup', () => { if (dragState) { exportJson(); } dragState = null; });
+        window.addEventListener('keydown', (event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); copyNode(); }
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) { event.preventDefault(); undo(); }
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redo(); }
+            if (event.key === 'Delete') { deleteNode(); }
         });
 
         document.getElementById('add-section').onclick = () => addNode('section');
         document.getElementById('add-filter').onclick = () => addNode('filter');
         document.getElementById('add-table').onclick = () => addNode('table');
         document.getElementById('add-button').onclick = () => addNode('button');
+        document.getElementById('preset-list').onclick = () => insertPreset('list');
+        document.getElementById('undo').onclick = undo;
+        document.getElementById('redo').onclick = redo;
+        document.getElementById('duplicate-node').onclick = copyNode;
         document.getElementById('update-node').onclick = updateNode;
         document.getElementById('delete-node').onclick = deleteNode;
         document.getElementById('export-json').onclick = exportJson;
         document.getElementById('copy-json').onclick = async () => { if (!output.value) { exportJson(); } await navigator.clipboard.writeText(output.value); };
+        document.getElementById('import-json').onclick = importJson;
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
-        exportJson();
+        exportJson(); render();
     </script>
 </body>
 </html>

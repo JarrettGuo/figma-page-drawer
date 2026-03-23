@@ -67,7 +67,12 @@ node scripts/unified-json.js --command validate   --input examples/approval-flow
 - 支持右下角拖拽缩放
 - 8px 网格吸附，导出相对位置更稳定
 - 支持基础父子容器挂载（新增节点优先挂到选中容器）
-- 右侧编辑节点文字、尺寸、父节点
+- 父子层级树可视化
+- 类型颜色区分
+- 列表页模板预设
+- 快捷键复制/删除/撤销/重做
+- 支持从 unified JSON 回显编辑器
+- 右侧编辑节点标题、文字、尺寸、父节点
 - 一键导出 unified JSON
 - 一键复制 JSON
 
