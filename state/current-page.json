@@ -1,0 +1,35 @@
+{
+    "pageType": "dashboard",
+    "platform": "web",
+    "pageName": "订单工作台-优化版",
+    "style": {
+        "theme": "light",
+        "colorPrimary": "#DC2626",
+        "radius": 12,
+        "density": "medium"
+    },
+    "sections": [
+        {
+            "type": "header",
+            "enabled": true
+        },
+        {
+            "type": "stats-cards",
+            "count": 3
+        },
+        {
+            "type": "table",
+            "enabled": true,
+            "columns": [
+                "订单号",
+                "状态",
+                "创建时间"
+            ]
+        }
+    ],
+    "reference": {
+        "hasScreenshot": false,
+        "referenceMode": "none",
+        "derivedStyle": {}
+    }
+}

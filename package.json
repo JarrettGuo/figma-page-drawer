@@ -1,0 +1,16 @@
+{
+    "name": "figma-page-drawer",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build:dashboard": "node scripts/build-page-plugin.js --type dashboard",
+        "build:list": "node scripts/build-page-plugin.js --type list",
+        "build:update": "node scripts/update-page-plugin.js",
+        "test": "vitest run"
+    },
+    "devDependencies": {
+        "@types/node": "^25.5.0",
+        "vitest": "^4.1.0"
+    }
+}
