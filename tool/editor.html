@@ -104,8 +104,7 @@
                 <label>Z轴<input id="nodeZIndex" type="number" value="0" /></label>
                 <label>宽<input id="nodeWidth" type="number" /></label>
                 <label>高<input id="nodeHeight" type="number" /></label>
-                                <button id="update-node">更新节点</button>
-                <div id="table-actions" class="row" style="display:none; margin-bottom:10px; flex-wrap:wrap;">
+                                <div id="table-actions" class="row" style="display:none; margin-bottom:10px; flex-wrap:wrap;">
                     <button id="add-row" type="button">增行</button>
                     <button id="remove-row" type="button">删行</button>
                     <button id="add-col" type="button">增列</button>
@@ -414,7 +413,6 @@
             renderTableEditor(node);
             isSyncingEditor = false;
         };
-        const updateNode = () => { applyNodeEditorChanges({ push: true }); };
         const mutateActiveTable = (mutator) => {
             const index = nodes.findIndex((item) => item.id === activeId && item.type === 'table');
             if (index < 0) return;
@@ -607,7 +605,6 @@
         document.getElementById('undo').onclick = undo;
         document.getElementById('redo').onclick = redo;
         document.getElementById('duplicate-node').onclick = copyNode;
-        document.getElementById('update-node').onclick = updateNode;
         document.getElementById('delete-node').onclick = deleteNode;
         document.getElementById('add-row').onclick = () => mutateActiveTable((node) => appendTableRow(node));
         document.getElementById('remove-row').onclick = () => mutateActiveTable((node) => removeTableRow(node));
