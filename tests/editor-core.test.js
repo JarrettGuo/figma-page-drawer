@@ -9,14 +9,15 @@ describe('visual editor core', () => {
         expect(node.parentId).toBe('root');
         expect(node.x).toBe(16);
         expect(node.y).toBe(16);
+        expect(node.text).toBe('请输入内容');
     });
 
-    it('normalizes form input', () => {
-        const form = normalizeFormInput({ pageType: 'list', pageName: '审批流列表页', pageGoal: '管理审批', targetUser: '运营', colorPrimary: '#1677FF', radius: '16', density: 'compact', looseness: 'free' });
-        expect(form.style.radius).toBe(16);
-        expect(form.pageGoal).toBe('管理审批');
-        expect(form.targetUser).toBe('运营');
-        expect(form.style.looseness).toBe('free');
+    it('normalizes main page info only', () => {
+        const form = normalizeFormInput({ pageType: 'list', pageName: '审批流列表页', notes: '备注' });
+        expect(form.pageType).toBe('list');
+        expect(form.pageName).toBe('审批流列表页');
+        expect(form.notes).toBe('备注');
+        expect(form.style.radius).toBe(12);
     });
 
     it('builds and serializes unified json', () => {
@@ -30,7 +31,7 @@ describe('visual editor core', () => {
     it('supports grid snap and parent resolve', () => {
         expect(snapToGrid(10)).toBe(8);
         expect(softSnap(14)).toBe(16);
-        expect(resolveParentId([{ id: 'a', type: 'card', parentId: 'root' }], 'a')).toBe('a');
+        expect(resolveParentId([{ id: 'a', type: 'modal', parentId: 'root' }], 'a')).toBe('a');
     });
 
     it('updates position and size with constraints', () => {
@@ -50,12 +51,14 @@ describe('visual editor core', () => {
         expect(duplicateNode(node).id).not.toBe('n1');
         expect(buildTemplateNodes('list').length).toBeGreaterThan(0);
         expect(COMPONENT_LIBRARY).toContain('sidebar');
+        expect(COMPONENT_LIBRARY).toContain('input');
+        expect(COMPONENT_LIBRARY).toContain('button');
     });
 
     it('parses unified json back into editor state', () => {
-        const parsed = parseUnifiedJson({ form: { pageType: 'list', pageName: '审批流列表页', pageGoal: '审批', targetUser: '管理员', style: { looseness: 'loose' } }, wireframe: { canvas: { width: 100, height: 100 }, nodes: [{ id: 'root' }, { id: 'n1', parentId: 'root', type: 'section', name: 'A', title: 'A', text: '', x: 0, y: 0, width: 10, height: 10 }] } });
+        const parsed = parseUnifiedJson({ form: { pageType: 'list', pageName: '审批流列表页', notes: '说明' }, wireframe: { canvas: { width: 100, height: 100 }, nodes: [{ id: 'root' }, { id: 'n1', parentId: 'root', type: 'text', name: 'A', title: 'A', text: '', x: 0, y: 0, width: 10, height: 10 }] } });
         expect(parsed.form.pageName).toBe('审批流列表页');
-        expect(parsed.form.style.looseness).toBe('loose');
+        expect(parsed.form.notes).toBe('说明');
         expect(parsed.nodes.length).toBe(1);
     });
 

@@ -7,11 +7,11 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; font-family: Inter, Arial, sans-serif; background: #f3f4f6; color: #111827; }
-        .app { display: grid; grid-template-columns: 320px 1fr 360px; min-height: 100vh; }
+        .app { display: grid; grid-template-columns: 280px minmax(0, 0.67fr) 320px; min-height: 100vh; }
         .panel { background: #fff; border-right: 1px solid #e5e7eb; padding: 16px; overflow: auto; }
         .panel.right { border-right: 0; border-left: 1px solid #e5e7eb; }
         h1, h2, h3 { margin: 0 0 12px; }
-        .toolbar, .field-list, .actions, .component-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .field-list, .actions, .component-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .row { display: flex; gap: 8px; }
         button, select, input, textarea { width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 10px 12px; background: #fff; }
         button { cursor: pointer; }
@@ -20,7 +20,7 @@
         .canvas-frame { transform-origin: top left; }
         .zoom-bar { display: flex; gap: 8px; margin-bottom: 12px; }
         .canvas {
-            position: relative; width: 1440px; height: 1024px; background: #fff; border: 1px solid #d1d5db;
+            position: relative; width: 960px; height: 720px; background: #fff; border: 1px solid #d1d5db;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
             background-image: linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
             background-size: 16px 16px;
@@ -32,7 +32,7 @@
         .node.active { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
         .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
         .node-level { font-size: 11px; color: #6b7280; font-weight: 500; }
-        .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; pointer-events: none; }
+        .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; }
         .resize-handle { position: absolute; width: 10px; height: 10px; right: -5px; bottom: -5px; background: #1677ff; border-radius: 50%; cursor: se-resize; }
         .inline-editor { position: absolute; z-index: 20; border: 1px solid #1677ff; border-radius: 8px; padding: 8px; resize: none; font-size: 12px; line-height: 1.4; outline: none; background: rgba(255,255,255,0.98); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
         .tree { font-size: 12px; color: #374151; margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; white-space: pre-wrap; }
@@ -42,18 +42,17 @@
         .component-button { text-align: left; }
         .component-button small { display: block; color: #6b7280; margin-top: 4px; }
         .section-block { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
-        .muted { color: #6b7280; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="app">
         <aside class="panel">
             <h1>组件区</h1>
-            <div class="hint">只保留草图常用组件。点击可直接加到画布，或先选中容器再添加。拖拽时只做轻量吸附，不追求像素级精确。</div>
+            <div class="hint">先点击左侧组件，再自动出现在画布中。先不强依赖拖入，保证草图能快速画出来。</div>
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
-                <div class="row"><button id="preset-list">插入列表页草图模板</button><button id="duplicate-node">复制选中</button></div>
+                <div class="row"><button id="preset-list">插入列表页模板</button><button id="duplicate-node">复制选中</button></div>
                 <div class="row"><button id="undo">撤销</button><button id="redo">重做</button></div>
             </div>
             <div class="section-block">
@@ -61,21 +60,13 @@
                 <div class="field-list">
                     <label>页面类型<select id="pageType"><option value="list">列表页</option><option value="dashboard">Dashboard</option><option value="form">表单页</option><option value="detail">详情页</option></select></label>
                     <label>页面名称<input id="pageName" value="未命名页面" /></label>
-                    <label>页面目标<input id="pageGoal" placeholder="比如：管理用户、查看订单、配置活动" /></label>
-                    <label>使用对象<input id="targetUser" placeholder="比如：运营、销售、管理员" /></label>
-                    <label>平台<select id="platform"><option value="web">web</option><option value="mobile">mobile</option></select></label>
-                    <label>页面风格<select id="pageStyle"><option value="admin">后台管理</option><option value="dashboard">数据看板</option><option value="simple">简洁业务页</option></select></label>
-                    <label>主色<input id="colorPrimary" value="#1677FF" /></label>
-                    <label>圆角<input id="radius" type="number" value="12" /></label>
-                    <label>密度<select id="density"><option value="compact">compact</option><option value="medium" selected>medium</option><option value="comfortable">comfortable</option></select></label>
-                    <label>草图松散度<select id="looseness"><option value="tight">较规整</option><option value="loose" selected>较松散</option><option value="free">很松散</option></select></label>
-                    <label>页面备注<textarea id="notes" placeholder="补充页面说明、交互提醒、业务规则"></textarea></label>
+                    <label>备注<textarea id="notes" placeholder="补充这个页面的说明"></textarea></label>
                 </div>
             </div>
         </aside>
         <main class="canvas-wrap">
             <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
-            <div class="hint">画布区：拖动组件排版；双击节点正文可直接改文字；双击节点标题可改标题。</div>
+            <div class="hint">展示区：点击组件直接落到画布；双击标题或正文都能改字；拖动和缩放仍然保留。</div>
             <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
         </main>
         <aside class="panel right">
@@ -110,7 +101,7 @@
         const output = document.getElementById('output');
         const treeView = document.getElementById('tree-view');
         const componentList = document.getElementById('component-list');
-        const formIds = ['pageType', 'pageName', 'pageGoal', 'targetUser', 'platform', 'pageStyle', 'colorPrimary', 'radius', 'density', 'looseness', 'notes'];
+        const formIds = ['pageType', 'pageName', 'notes'];
         let nodes = [];
         let activeId = null;
         let dragState = null;
@@ -175,10 +166,10 @@
         };
         const getFormRaw = () => Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value]));
         const getFormData = () => normalizeFormInput(getFormRaw());
-        const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 1440, height: 1024 } }); };
+        const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 960, height: 720 } }); };
         const addNode = (type) => {
             pushHistory();
-            const meta = NODE_TYPE_META[type] || { label: '区块', defaultWidth: 240, defaultHeight: 120 };
+            const meta = NODE_TYPE_META[type] || { label: '组件', defaultWidth: 160, defaultHeight: 60, defaultText: '组件内容' };
             const parentId = resolveParentId(nodes, activeId, 'root');
             const node = createNode({
                 id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -186,9 +177,9 @@
                 parentId,
                 name: meta.label,
                 title: meta.label,
-                text: `${meta.label}说明`,
-                x: 64 + nodes.length * 18,
-                y: 64 + nodes.length * 18,
+                text: meta.defaultText,
+                x: 40 + (nodes.length % 6) * 28,
+                y: 40 + (nodes.length % 8) * 28,
                 width: meta.defaultWidth,
                 height: meta.defaultHeight,
             });
@@ -262,14 +253,6 @@
                 const form = parsed.form || {};
                 document.getElementById('pageType').value = form.pageType || 'list';
                 document.getElementById('pageName').value = form.pageName || '未命名页面';
-                document.getElementById('pageGoal').value = form.pageGoal || '';
-                document.getElementById('targetUser').value = form.targetUser || '';
-                document.getElementById('platform').value = form.platform || 'web';
-                document.getElementById('pageStyle').value = form.pageStyle || 'admin';
-                document.getElementById('colorPrimary').value = form.style?.colorPrimary || '#1677FF';
-                document.getElementById('radius').value = form.style?.radius || 12;
-                document.getElementById('density').value = form.style?.density || 'medium';
-                document.getElementById('looseness').value = form.style?.looseness || 'loose';
                 document.getElementById('notes').value = form.notes || '';
                 activeId = nodes[0]?.id || null;
                 render();
