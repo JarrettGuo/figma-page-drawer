@@ -47,6 +47,9 @@
         .component-group summary::-webkit-details-marker { display: none; }
         .component-group[open] summary { background: #f3f4f6; }
         .component-group-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .table-editor-grid { display: flex; flex-direction: column; gap: 8px; }
+        .table-editor-row { display: grid; gap: 6px; }
+        .table-editor-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
     </style>
 </head>
 <body>
@@ -96,6 +99,7 @@
                     <button id="add-col" type="button">增列</button>
                     <button id="remove-col" type="button">删列</button>
                 </div>
+                <div id="table-editor" style="display:none; margin-bottom:12px; border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fafafa;"></div>
                 <button id="delete-node">删除节点</button>
             </div>
             <div class="actions">
@@ -119,6 +123,7 @@
         const componentList = document.getElementById('component-list');
         const nodeEditor = document.getElementById('node-editor');
         const tableActions = document.getElementById('table-actions');
+        const tableEditor = document.getElementById('table-editor');
         const formIds = ['pageType', 'pageName', 'notes'];
         const nodeEditorIds = ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight'];
         const COMPONENT_GROUPS = [
@@ -201,7 +206,6 @@
                         cell.className = `table-cell header${activeTableCell && activeTableCell.nodeId === node.id && activeTableCell.rowIndex === -1 && activeTableCell.colIndex === colIndex ? ' active' : ''}`;
                         cell.textContent = column;
                         cell.addEventListener('click', (event) => { event.stopPropagation(); activeTableCell = { nodeId: node.id, rowIndex: -1, colIndex }; selectNode(node.id); });
-                        cell.addEventListener('dblclick', (event) => openTableCellEditor(event, node.id, -1, colIndex, column));
                         grid.appendChild(cell);
                     });
                     table.rows.forEach((row, rowIndex) => {
@@ -210,7 +214,6 @@
                             cell.className = `table-cell${activeTableCell && activeTableCell.nodeId === node.id && activeTableCell.rowIndex === rowIndex && activeTableCell.colIndex === colIndex ? ' active' : ''}`;
                             cell.textContent = value || ' ';
                             cell.addEventListener('click', (event) => { event.stopPropagation(); activeTableCell = { nodeId: node.id, rowIndex, colIndex }; selectNode(node.id); });
-                            cell.addEventListener('dblclick', (event) => openTableCellEditor(event, node.id, rowIndex, colIndex, value));
                             grid.appendChild(cell);
                         });
                     });
@@ -283,6 +286,73 @@
         };
         const insertPreset = (key) => { pushHistory(); nodes = [...nodes, ...buildTemplateNodes(key).map((node) => constrainNode(node, DEFAULT_CANVAS))]; render(); exportJson(); };
         const selectNode = (id) => { applyNodeEditorChanges({ push: true }); activeId = id; render(); };
+        const renderTableEditor = (node) => {
+            if (!node || node.type !== 'table') {
+                tableEditor.style.display = 'none';
+                tableEditor.innerHTML = '';
+                return;
+            }
+            const table = normalizeTableConfig(node.tableConfig);
+            tableEditor.style.display = 'block';
+            tableEditor.innerHTML = '';
+
+            const headerLabel = document.createElement('div');
+            headerLabel.className = 'table-editor-label';
+            headerLabel.textContent = '表头';
+            tableEditor.appendChild(headerLabel);
+
+            const headerRow = document.createElement('div');
+            headerRow.className = 'table-editor-row';
+            headerRow.style.gridTemplateColumns = `repeat(${table.columns.length}, minmax(0, 1fr))`;
+            table.columns.forEach((column, colIndex) => {
+                const input = document.createElement('input');
+                input.value = column;
+                input.addEventListener('input', () => {
+                    const index = nodes.findIndex((item) => item.id === node.id);
+                    if (index < 0) return;
+                    const current = nodes[index];
+                    const currentTable = normalizeTableConfig(current.tableConfig);
+                    const columns = currentTable.columns.map((item, idx) => idx === colIndex ? input.value.trim() || `列${idx + 1}` : item);
+                    nodes[index] = { ...current, text: columns.join(' ｜ '), tableConfig: { columns, rows: currentTable.rows } };
+                    nodes = [...nodes];
+                    render();
+                    exportJson();
+                });
+                headerRow.appendChild(input);
+            });
+            tableEditor.appendChild(headerRow);
+
+            const bodyLabel = document.createElement('div');
+            bodyLabel.className = 'table-editor-label';
+            bodyLabel.style.marginTop = '8px';
+            bodyLabel.textContent = '表格内容';
+            tableEditor.appendChild(bodyLabel);
+
+            const body = document.createElement('div');
+            body.className = 'table-editor-grid';
+            table.rows.forEach((row, rowIndex) => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'table-editor-row';
+                rowEl.style.gridTemplateColumns = `repeat(${table.columns.length}, minmax(0, 1fr))`;
+                row.forEach((value, colIndex) => {
+                    const input = document.createElement('input');
+                    input.value = value;
+                    input.placeholder = `${table.columns[colIndex] || `列${colIndex + 1}`}`;
+                    input.addEventListener('input', () => {
+                        const index = nodes.findIndex((item) => item.id === node.id);
+                        if (index < 0) return;
+                        nodes[index] = updateTableCell(nodes[index], rowIndex, colIndex, input.value);
+                        nodes = [...nodes];
+                        render();
+                        exportJson();
+                    });
+                    rowEl.appendChild(input);
+                });
+                body.appendChild(rowEl);
+            });
+            tableEditor.appendChild(body);
+        };
+
         const syncNodeEditor = () => {
             const node = nodes.find((item) => item.id === activeId);
             isSyncingEditor = true;
@@ -306,6 +376,7 @@
                 el.value = fieldValues[id] ?? '';
             });
             tableActions.style.display = node && node.type === 'table' ? 'flex' : 'none';
+            renderTableEditor(node);
             isSyncingEditor = false;
         };
         const updateNode = () => { applyNodeEditorChanges({ push: true }); };
