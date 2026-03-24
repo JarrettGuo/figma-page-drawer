@@ -7,7 +7,7 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; font-family: Inter, Arial, sans-serif; background: #f3f4f6; color: #111827; }
-        .app { display: grid; grid-template-columns: 280px minmax(0, 0.67fr) 320px; min-height: 100vh; }
+        .app { display: grid; grid-template-columns: 280px 1fr 320px; min-height: 100vh; }
         .panel { background: #fff; border-right: 1px solid #e5e7eb; padding: 16px; overflow: auto; }
         .panel.right { border-right: 0; border-left: 1px solid #e5e7eb; }
         h1, h2, h3 { margin: 0 0 12px; }
@@ -16,8 +16,9 @@
         button, select, input, textarea { width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 10px 12px; background: #fff; }
         button { cursor: pointer; }
         button.primary { background: #1677ff; border-color: #1677ff; color: #fff; }
-        .canvas-wrap { padding: 16px; overflow: auto; }
-        .canvas-frame { transform-origin: top left; }
+        .canvas-wrap { padding: 16px; overflow: auto; display: flex; flex-direction: column; align-items: center; }
+        .canvas-shell { width: 100%; max-width: 760px; }
+        .canvas-frame { transform-origin: top center; }
         .zoom-bar { display: flex; gap: 8px; margin-bottom: 12px; }
         .canvas {
             position: relative; width: 960px; height: 720px; background: #fff; border: 1px solid #d1d5db;
@@ -48,7 +49,7 @@
     <div class="app">
         <aside class="panel">
             <h1>组件区</h1>
-            <div class="hint">先点击左侧组件，再自动出现在画布中。先不强依赖拖入，保证草图能快速画出来。</div>
+            <div class="hint">点击组件会直接插入到中间展示区中心附近。左边和右边固定贴边，中间只缩展示范围。</div>
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
@@ -65,9 +66,11 @@
             </div>
         </aside>
         <main class="canvas-wrap">
-            <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
-            <div class="hint">展示区：点击组件直接落到画布；双击标题或正文都能改字；拖动和缩放仍然保留。</div>
-            <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
+            <div class="canvas-shell">
+                <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
+                <div class="hint">展示区：双击标题或正文都能改字；拖动和缩放保留；新组件默认落在展示区中央附近。</div>
+                <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
+            </div>
         </main>
         <aside class="panel right">
             <h1>节点编辑 / 导入导出</h1>
@@ -106,7 +109,7 @@
         let activeId = null;
         let dragState = null;
         let inlineEditor = null;
-        let zoom = 1;
+        let zoom = 0.67;
         let guides = { x: null, y: null };
         const history = [];
         const future = [];
@@ -116,7 +119,7 @@
         const restore = (state) => {
             nodes = state.nodes || [];
             activeId = state.activeId || null;
-            zoom = state.zoom || 1;
+            zoom = state.zoom || 0.67;
             Object.entries(state.form || {}).forEach(([key, value]) => { const el = document.getElementById(key); if (el) { el.value = value; } });
             applyZoom(); render(); exportJson();
         };
@@ -167,10 +170,17 @@
         const getFormRaw = () => Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value]));
         const getFormData = () => normalizeFormInput(getFormRaw());
         const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 960, height: 720 } }); };
+        const computeInsertPosition = (meta) => {
+            const centerX = Math.max(24, Math.round((960 - (meta.defaultWidth || 160)) / 2 / 8) * 8);
+            const centerY = Math.max(24, Math.round((720 - (meta.defaultHeight || 60)) / 2 / 8) * 8);
+            const offset = Math.min(nodes.length, 6) * 16;
+            return { x: centerX + offset, y: centerY + offset };
+        };
         const addNode = (type) => {
             pushHistory();
             const meta = NODE_TYPE_META[type] || { label: '组件', defaultWidth: 160, defaultHeight: 60, defaultText: '组件内容' };
             const parentId = resolveParentId(nodes, activeId, 'root');
+            const pos = computeInsertPosition(meta);
             const node = createNode({
                 id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                 type,
@@ -178,8 +188,8 @@
                 name: meta.label,
                 title: meta.label,
                 text: meta.defaultText,
-                x: 40 + (nodes.length % 6) * 28,
-                y: 40 + (nodes.length % 8) * 28,
+                x: pos.x,
+                y: pos.y,
                 width: meta.defaultWidth,
                 height: meta.defaultHeight,
             });
@@ -356,14 +366,15 @@
         document.getElementById('import-json').onclick = importJson;
         document.getElementById('zoom-in').onclick = () => { zoom = Math.min(2, Number((zoom + 0.1).toFixed(2))); applyZoom(); };
         document.getElementById('zoom-out').onclick = () => { zoom = Math.max(0.5, Number((zoom - 0.1).toFixed(2))); applyZoom(); };
-        document.getElementById('zoom-reset').onclick = () => { zoom = 1; applyZoom(); };
+        document.getElementById('zoom-reset').onclick = () => { zoom = 0.67; applyZoom(); };
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
         COMPONENT_LIBRARY.forEach((type) => {
             const meta = NODE_TYPE_META[type];
             const btn = document.createElement('button');
+            btn.type = 'button';
             btn.className = 'component-button';
             btn.innerHTML = `${meta.label}<small>${Math.round(meta.defaultWidth)} × ${Math.round(meta.defaultHeight)}</small>`;
-            btn.onclick = () => addNode(type);
+            btn.addEventListener('click', () => addNode(type));
             componentList.appendChild(btn);
         });
         applyZoom(); exportJson(); render();
