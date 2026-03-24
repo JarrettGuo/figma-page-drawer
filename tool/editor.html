@@ -433,7 +433,18 @@
             const index = nodes.findIndex((item) => item.id === nodeId);
             if (index >= 0) {
                 pushHistory();
-                nodes[index] = rowIndex === -1 ? updateTableColumns(nodes[index], nodes[index].tableConfig.columns.map((col, idx) => idx === colIndex ? value : col).join(' ｜ ')) : updateTableCell(nodes[index], rowIndex, colIndex, value);
+                if (rowIndex === -1) {
+                    const current = nodes[index];
+                    const table = normalizeTableConfig(current.tableConfig);
+                    const columns = table.columns.map((col, idx) => idx === colIndex ? String(value || '').trim() || `列${idx + 1}` : col);
+                    nodes[index] = {
+                        ...current,
+                        text: columns.join(' ｜ '),
+                        tableConfig: { columns, rows: table.rows },
+                    };
+                } else {
+                    nodes[index] = updateTableCell(nodes[index], rowIndex, colIndex, value);
+                }
                 nodes[index] = constrainNode(nodes[index], DEFAULT_CANVAS);
                 nodes = [...nodes];
             }
