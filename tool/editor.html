@@ -29,6 +29,10 @@
         .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
         .node-level { font-size: 11px; color: #6b7280; font-weight: 500; }
         .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; }
+        .table-grid { margin-top: 6px; display: grid; gap: 0; border: 1px solid rgba(107,114,128,0.25); background: rgba(255,255,255,0.9); }
+        .table-cell { min-height: 26px; padding: 4px 6px; border-right: 1px solid rgba(107,114,128,0.18); border-bottom: 1px solid rgba(107,114,128,0.18); font-size: 11px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(255,255,255,0.92); }
+        .table-cell.header { font-weight: 700; background: rgba(243,244,246,0.96); }
+        .table-cell.active { outline: 2px solid #1677ff; outline-offset: -2px; background: rgba(219,234,254,0.96); }
         .resize-handle { position: absolute; width: 10px; height: 10px; right: -5px; bottom: -5px; background: #1677ff; border-radius: 50%; cursor: se-resize; }
         .inline-editor { position: absolute; z-index: 20; border: 1px solid #1677ff; border-radius: 8px; padding: 8px; resize: none; font-size: 12px; line-height: 1.4; outline: none; background: rgba(255,255,255,0.98); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
         .tree { font-size: 12px; color: #374151; margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; white-space: pre-wrap; }
@@ -101,7 +105,7 @@
         import * as Core from './editor-core.js';
         window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
         window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
-        const { DEFAULT_CANVAS, GRID_SIZE, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
+        const { DEFAULT_CANVAS, GRID_SIZE, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, normalizeTableConfig, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, updateTableCell, updateTableColumns, softSnap } = Core;
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
@@ -120,6 +124,7 @@
         let activeId = null;
         let dragState = null;
         let inlineEditor = null;
+        let activeTableCell = null;
         let zoom = 1;
         let guides = { x: null, y: null };
         let isSyncingEditor = false;
@@ -179,6 +184,31 @@
                 textEl.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'text'));
                 el.appendChild(titleEl);
                 el.appendChild(textEl);
+                if (node.type === 'table') {
+                    const table = normalizeTableConfig(node.tableConfig);
+                    const grid = document.createElement('div');
+                    grid.className = 'table-grid';
+                    grid.style.gridTemplateColumns = `repeat(${table.columns.length}, minmax(0, 1fr))`;
+                    table.columns.forEach((column, colIndex) => {
+                        const cell = document.createElement('div');
+                        cell.className = `table-cell header${activeTableCell && activeTableCell.nodeId === node.id && activeTableCell.rowIndex === -1 && activeTableCell.colIndex === colIndex ? ' active' : ''}`;
+                        cell.textContent = column;
+                        cell.addEventListener('click', (event) => { event.stopPropagation(); activeTableCell = { nodeId: node.id, rowIndex: -1, colIndex }; selectNode(node.id); });
+                        cell.addEventListener('dblclick', (event) => openTableCellEditor(event, node.id, -1, colIndex, column));
+                        grid.appendChild(cell);
+                    });
+                    table.rows.forEach((row, rowIndex) => {
+                        row.forEach((value, colIndex) => {
+                            const cell = document.createElement('div');
+                            cell.className = `table-cell${activeTableCell && activeTableCell.nodeId === node.id && activeTableCell.rowIndex === rowIndex && activeTableCell.colIndex === colIndex ? ' active' : ''}`;
+                            cell.textContent = value || ' ';
+                            cell.addEventListener('click', (event) => { event.stopPropagation(); activeTableCell = { nodeId: node.id, rowIndex, colIndex }; selectNode(node.id); });
+                            cell.addEventListener('dblclick', (event) => openTableCellEditor(event, node.id, rowIndex, colIndex, value));
+                            grid.appendChild(cell);
+                        });
+                    });
+                    el.appendChild(grid);
+                }
                 el.addEventListener('mousedown', (event) => startDrag(event, node.id, 'move'));
                 el.addEventListener('click', () => selectNode(node.id));
                 const resizeHandle = document.createElement('div');
@@ -223,6 +253,7 @@
                 y: softSnap(document.getElementById('nodeY').value),
                 width: Math.max(24, softSnap(document.getElementById('nodeWidth').value)),
                 height: Math.max(24, softSnap(document.getElementById('nodeHeight').value)),
+                ...(current.type === 'table' ? { tableConfig: normalizeTableConfig(current.tableConfig) } : {}),
             }, DEFAULT_CANVAS);
             const changed = JSON.stringify(current) !== JSON.stringify(next);
             if (!changed) return;
@@ -354,6 +385,44 @@
             exportJson();
         };
         const closeInlineEditor = () => { if (inlineEditor && inlineEditor.parentNode) inlineEditor.parentNode.removeChild(inlineEditor); inlineEditor = null; };
+        const openTableCellEditor = (event, nodeId, rowIndex, colIndex, value) => {
+            event.stopPropagation();
+            event.preventDefault();
+            const node = nodes.find((item) => item.id === nodeId);
+            if (!node) return;
+            activeId = nodeId;
+            activeTableCell = { nodeId, rowIndex, colIndex };
+            closeInlineEditor();
+            const textarea = document.createElement('textarea');
+            textarea.className = 'inline-editor';
+            textarea.value = value || '';
+            textarea.style.left = `${node.x + 8}px`;
+            textarea.style.top = `${node.y + 36}px`;
+            textarea.style.width = `${Math.max(160, node.width - 16)}px`;
+            textarea.style.height = `56px`;
+            textarea.addEventListener('mousedown', (mouseEvent) => mouseEvent.stopPropagation());
+            textarea.addEventListener('keydown', (keyEvent) => {
+                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') saveTableCellEditor(nodeId, rowIndex, colIndex, textarea.value);
+                if (keyEvent.key === 'Escape') closeInlineEditor();
+            });
+            textarea.addEventListener('blur', () => saveTableCellEditor(nodeId, rowIndex, colIndex, textarea.value));
+            canvas.appendChild(textarea);
+            inlineEditor = textarea;
+            textarea.focus();
+            textarea.select();
+        };
+        const saveTableCellEditor = (nodeId, rowIndex, colIndex, value) => {
+            const index = nodes.findIndex((item) => item.id === nodeId);
+            if (index >= 0) {
+                pushHistory();
+                nodes[index] = rowIndex === -1 ? updateTableColumns(nodes[index], nodes[index].tableConfig.columns.map((col, idx) => idx === colIndex ? value : col).join(' ｜ ')) : updateTableCell(nodes[index], rowIndex, colIndex, value);
+                nodes[index] = constrainNode(nodes[index], DEFAULT_CANVAS);
+                nodes = [...nodes];
+            }
+            closeInlineEditor();
+            render();
+            exportJson();
+        };
         window.addEventListener('mousemove', (event) => {
             if (!dragState) return;
             const index = nodes.findIndex((item) => item.id === dragState.id);

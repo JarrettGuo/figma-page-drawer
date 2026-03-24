@@ -24,7 +24,7 @@ export const NODE_TYPE_META = {
     select: { label: '下拉框', color: '#FDE68A', defaultWidth: 220, defaultHeight: 44, defaultText: '请选择' },
     datePicker: { label: '日期选择', color: '#FCE7F3', defaultWidth: 220, defaultHeight: 44, defaultText: '选择日期' },
     search: { label: '搜索框', color: '#FDE68A', defaultWidth: 280, defaultHeight: 44, defaultText: '搜索关键词' },
-    table: { label: '表格', color: '#DCFCE7', defaultWidth: 520, defaultHeight: 260, defaultText: '表格内容' },
+    table: { label: '表格', color: '#DCFCE7', defaultWidth: 520, defaultHeight: 260, defaultText: 'flow_type ｜ system_name ｜ status ｜ approval_id ｜ 操作', defaultTable: { columns: ['flow_type', 'system_name', 'status', 'approval_id', '操作'], rows: [[], [], [], []] } },
     card: { label: '卡片', color: '#EDE9FE', defaultWidth: 240, defaultHeight: 140, defaultText: '卡片说明' },
     tag: { label: '标签', color: '#D1FAE5', defaultWidth: 88, defaultHeight: 32, defaultText: '标签' },
     text: { label: '文本', color: '#F3F4F6', defaultWidth: 220, defaultHeight: 56, defaultText: '正文描述' },
@@ -65,7 +65,7 @@ export function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 
-export function createNode({ id, type = 'text', name, title, text = '', x = 40, y = 40, width, height, parentId = 'root' }) {
+export function createNode({ id, type = 'text', name, title, text = '', x = 40, y = 40, width, height, parentId = 'root', tableConfig }) {
     const meta = NODE_TYPE_META[type] || NODE_TYPE_META.text;
     const finalName = name || meta.label || '未命名组件';
     return {
@@ -79,7 +79,31 @@ export function createNode({ id, type = 'text', name, title, text = '', x = 40, 
         y: softSnap(y),
         width: Math.max(GRID_SIZE, softSnap(width ?? meta.defaultWidth ?? 240)),
         height: Math.max(GRID_SIZE, softSnap(height ?? meta.defaultHeight ?? 120)),
+        ...(type === 'table' ? { tableConfig: normalizeTableConfig(tableConfig || meta.defaultTable) } : {}),
     };
+}
+
+
+export function normalizeTableConfig(config) {
+    const columns = Array.isArray(config?.columns) && config.columns.length > 0
+        ? config.columns.map((item) => String(item || '').trim() || '列')
+        : ['列1', '列2', '列3'];
+    const rows = Array.isArray(config?.rows) && config.rows.length > 0
+        ? config.rows.map((row) => Array.isArray(row) ? row.map((cell) => String(cell || '')) : [])
+        : [[], [], []];
+    return { columns, rows: rows.map((row) => columns.map((_, index) => row[index] || '')) };
+}
+
+export function updateTableCell(node, rowIndex, colIndex, value) {
+    const table = normalizeTableConfig(node.tableConfig);
+    const rows = table.rows.map((row, rIndex) => rIndex === rowIndex ? row.map((cell, cIndex) => cIndex === colIndex ? String(value || '') : cell) : row);
+    return { ...node, tableConfig: { columns: table.columns, rows } };
+}
+
+export function updateTableColumns(node, columns) {
+    const nextColumns = String(columns || '').split(/\||｜|,|，/).map((item) => item.trim()).filter(Boolean);
+    const table = normalizeTableConfig({ columns: nextColumns, rows: node.tableConfig?.rows || [] });
+    return { ...node, tableConfig: table, text: table.columns.join(' ｜ ') };
 }
 
 export function normalizeFormInput(raw) {
