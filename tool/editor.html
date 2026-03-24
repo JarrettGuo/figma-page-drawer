@@ -98,7 +98,7 @@
             <div id="node-editor">
                 <div id="selection-summary" class="hint">未选中节点</div>
                 <label>父节点 ID<input id="nodeParentId" /></label>
-                <label>节点类型<input id="nodeType" /></label>
+                <label>节点类型<input id="nodeType" readonly /></label>
                 <label>节点标题<input id="nodeTitle" /></label>
                 <label>节点名称<input id="nodeName" /></label>
                 <label>节点文字<textarea id="nodeText"></textarea></label>
@@ -139,7 +139,7 @@
         const tableActions = document.getElementById('table-actions');
         const tableEditor = document.getElementById('table-editor');
         const formIds = ['pageType', 'pageName', 'notes'];
-        const nodeEditorIds = ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight','nodeZIndex'];
+        const nodeEditorIds = ['nodeParentId','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight','nodeZIndex'];
         const COMPONENT_GROUPS = [
             { key: 'layout', title: '布局类', items: ['sidebar', 'tabs', 'breadcrumb'] },
             { key: 'form', title: '表单类', items: ['input', 'select', 'datePicker', 'search', 'button'] },
@@ -305,7 +305,6 @@
             const next = constrainNode({
                 ...current,
                 parentId: document.getElementById('nodeParentId').value || 'root',
-                type: document.getElementById('nodeType').value,
                 title: document.getElementById('nodeTitle').value,
                 name: document.getElementById('nodeName').value,
                 text: document.getElementById('nodeText').value,
