@@ -22,6 +22,23 @@ function firstByType(nodes, type) {
     return nodes.find((node) => node.type === type);
 }
 
+
+function isPaginationInsideTable(table, pagination) {
+    if (!table || !pagination) return false;
+    const tableLeft = Number(table.x || 0);
+    const tableTop = Number(table.y || 0);
+    const tableRight = tableLeft + Number(table.width || 0);
+    const tableBottom = tableTop + Number(table.height || 0);
+    const pagLeft = Number(pagination.x || 0);
+    const pagTop = Number(pagination.y || 0);
+    const pagRight = pagLeft + Number(pagination.width || 0);
+    const pagBottom = pagTop + Number(pagination.height || 0);
+    const inside = pagLeft >= tableLeft - 24 && pagRight <= tableRight + 24 && pagTop >= tableTop && pagBottom <= tableBottom + 48;
+    const nearBottomRight = pagLeft >= tableRight - 260 && pagTop >= tableBottom - 120;
+    return inside || nearBottomRight;
+}
+
+
 export function renderFromUnifiedJson(data) {
     const pageName = esc(data?.form?.pageName || '页面');
     const primary = esc(data?.form?.style?.colorPrimary || '#1677FF');
@@ -41,6 +58,7 @@ export function renderFromUnifiedJson(data) {
     const resetButton = buttonNodes.find((node) => /重制|重置/.test(node.text || node.title || ''));
     const columns = splitTableColumns(table?.text || '');
     const emptyText = esc(table?.text || '未提供表格字段说明');
+    const paginationInsideTable = isPaginationInsideTable(table, pagination);
 
     const menuItems = sidebar?.text
         ? esc(sidebar.text).split('\\n').filter(Boolean)
