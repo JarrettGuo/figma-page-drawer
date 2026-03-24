@@ -515,7 +515,14 @@
             if (event.shiftKey) { toggleSelection(id); return; }
             ensureSelection(id);
             const dragIds = selectedIds.includes(id) ? [...selectedIds] : [id];
-            dragState = { id, ids: dragIds, mode, startX: event.clientX, startY: event.clientY, origins: dragIds.map((dragId) => { const dragNode = nodes.find((item) => item.id === dragId); return { id: dragId, x: dragNode.x, y: dragNode.y, width: dragNode.width, height: dragNode.height }; }) };
+            const origins = dragIds.map((dragId) => { const dragNode = nodes.find((item) => item.id === dragId); return { id: dragId, x: dragNode.x, y: dragNode.y, width: dragNode.width, height: dragNode.height }; });
+            const groupBox = origins.reduce((acc, item) => ({
+                left: Math.min(acc.left, item.x),
+                top: Math.min(acc.top, item.y),
+                right: Math.max(acc.right, item.x + item.width),
+                bottom: Math.max(acc.bottom, item.y + item.height),
+            }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+            dragState = { id, ids: dragIds, mode, startX: event.clientX, startY: event.clientY, origins, groupBox };
             render();
         };
         const openInlineEditor = (event, id, field = 'text') => {
@@ -622,14 +629,30 @@
             const deltaX = (event.clientX - dragState.startX) / zoom;
             const deltaY = (event.clientY - dragState.startY) / zoom;
             if (dragState.mode === 'move') {
+                const groupLeft = dragState.groupBox.left;
+                const groupTop = dragState.groupBox.top;
+                const groupRight = dragState.groupBox.right;
+                const groupBottom = dragState.groupBox.bottom;
+                const boundedDeltaX = Math.min(
+                    Math.max(deltaX, -groupLeft),
+                    DEFAULT_CANVAS.width - groupRight
+                );
+                const boundedDeltaY = Math.min(
+                    Math.max(deltaY, -groupTop),
+                    DEFAULT_CANVAS.height - groupBottom
+                );
                 const primary = dragState.origins.find((item) => item.id === dragState.id);
                 const primaryNode = nodes.find((item) => item.id === dragState.id);
-                const moved = updateNodePosition({ ...primaryNode, x: primary.x, y: primary.y }, deltaX, deltaY, null, DEFAULT_CANVAS);
-                guides = findAlignmentGuides(moved, nodes);
+                const moved = updateNodePosition({ ...primaryNode, x: primary.x, y: primary.y }, boundedDeltaX, boundedDeltaY, null, DEFAULT_CANVAS);
+                guides = findAlignmentGuides(moved, nodes.filter((node) => !dragState.ids.includes(node.id)));
                 nodes = nodes.map((node) => {
                     const origin = dragState.origins.find((item) => item.id === node.id);
                     if (!origin) return node;
-                    return updateNodePosition({ ...node, x: origin.x, y: origin.y }, deltaX, deltaY, guides, DEFAULT_CANVAS);
+                    return {
+                        ...node,
+                        x: softSnap(origin.x + boundedDeltaX),
+                        y: softSnap(origin.y + boundedDeltaY),
+                    };
                 });
             } else {
                 const index = nodes.findIndex((item) => item.id === dragState.id);
