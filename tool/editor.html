@@ -104,7 +104,7 @@
                 <label>节点文字<textarea id="nodeText"></textarea></label>
                 <label>X<input id="nodeX" type="number" /></label>
                 <label>Y<input id="nodeY" type="number" /></label>
-                <label>Z轴<input id="nodeZIndex" type="number" value="0" /></label>
+                <label>Z轴<input id="nodeZIndex" type="number" /></label>
                 <label>宽<input id="nodeWidth" type="number" /></label>
                 <label>高<input id="nodeHeight" type="number" /></label>
                                 <div id="table-actions" class="row" style="display:none; margin-bottom:10px; flex-wrap:wrap;">
@@ -445,7 +445,7 @@
                 nodeWidth: node.width,
                 nodeHeight: node.height,
             } : {
-                nodeParentId: '', nodeType: '', nodeTitle: '', nodeName: '', nodeText: '', nodeX: '', nodeY: '', nodeZIndex: 0, nodeWidth: '', nodeHeight: ''
+                nodeParentId: '', nodeType: '', nodeTitle: '', nodeName: '', nodeText: '', nodeX: '', nodeY: '', nodeZIndex: '', nodeWidth: '', nodeHeight: ''
             };
             nodeEditorIds.forEach((id) => {
                 const el = document.getElementById(id);
