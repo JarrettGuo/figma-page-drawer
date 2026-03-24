@@ -43,13 +43,18 @@
         .component-button { text-align: left; }
         .component-button small { display: block; color: #6b7280; margin-top: 4px; }
         .section-block { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+        .component-group { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+        .component-group summary { list-style: none; cursor: pointer; padding: 10px 12px; font-size: 13px; font-weight: 600; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+        .component-group summary::-webkit-details-marker { display: none; }
+        .component-group[open] summary { background: #f3f4f6; }
+        .component-group-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
     </style>
 </head>
 <body>
     <div class="app">
         <aside class="panel">
             <h1>组件区</h1>
-            <div class="hint">点击组件会直接插入到中间展示区中心附近。左边和右边固定贴边，中间只缩展示范围。</div>
+            <div class="hint">组件已按类别分组。点击组件会直接插入到中间展示区中心附近。</div>
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
@@ -68,7 +73,7 @@
         <main class="canvas-wrap">
             <div class="canvas-shell">
                 <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
-                <div class="hint">展示区：双击标题或正文都能改字；拖动和缩放保留；新组件默认落在展示区中央附近。</div>
+                <div class="hint">展示区：双击标题或正文都能改字；拖动和缩放保留；右侧更新节点后这里会立即同步。</div>
                 <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
             </div>
         </main>
@@ -99,15 +104,21 @@
     </div>
     <script type="module">
         import * as Core from './editor-core.js';
-        const { buildTemplateNodes, COMPONENT_LIBRARY, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
         window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
         window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
+        const { buildTemplateNodes, COMPONENT_LIBRARY, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
         const treeView = document.getElementById('tree-view');
         const componentList = document.getElementById('component-list');
         const formIds = ['pageType', 'pageName', 'notes'];
+        const COMPONENT_GROUPS = [
+            { key: 'layout', title: '布局类', items: ['sidebar', 'tabs', 'breadcrumb'] },
+            { key: 'form', title: '表单类', items: ['input', 'select', 'datePicker', 'search', 'button'] },
+            { key: 'display', title: '展示类', items: ['table', 'card', 'tag', 'text', 'title', 'image'] },
+            { key: 'feedback', title: '反馈类', items: ['modal', 'pagination'] },
+        ];
         let nodes = [];
         let activeId = null;
         let dragState = null;
@@ -223,8 +234,9 @@
             const index = nodes.findIndex((item) => item.id === activeId);
             if (index < 0) { return; }
             pushHistory();
-            nodes[index] = {
-                ...nodes[index],
+            const current = nodes[index];
+            const next = {
+                ...current,
                 parentId: document.getElementById('nodeParentId').value || 'root',
                 type: document.getElementById('nodeType').value,
                 title: document.getElementById('nodeTitle').value,
@@ -235,6 +247,8 @@
                 width: Math.max(24, softSnap(document.getElementById('nodeWidth').value)),
                 height: Math.max(24, softSnap(document.getElementById('nodeHeight').value)),
             };
+            nodes = nodes.map((item, itemIndex) => (itemIndex === index ? next : item));
+            activeId = next.id;
             render();
             exportJson();
         };
@@ -257,7 +271,7 @@
             render();
             exportJson();
         };
-        const copyNode = () => { const node = nodes.find((item) => item.id === activeId); if (!node) { return; } pushHistory(); const copied = duplicateNode(node); nodes.push(copied); activeId = copied.id; render(); exportJson(); };
+        const copyNode = () => { const node = nodes.find((item) => item.id === activeId); if (!node) { return; } pushHistory(); const copied = duplicateNode(node); nodes = [...nodes, copied]; activeId = copied.id; render(); exportJson(); };
         const undo = () => { const state = history.pop(); if (!state) { return; } future.push(snapshot()); restore(state); };
         const redo = () => { const state = future.pop(); if (!state) { return; } history.push(snapshot()); restore(state); };
         const importJson = () => {
@@ -320,6 +334,7 @@
             if (index >= 0) {
                 pushHistory();
                 nodes[index] = field === 'title' ? updateNodeTitle(nodes[index], value) : updateNodeText(nodes[index], value);
+                nodes = [...nodes];
             }
             closeInlineEditor();
             render();
@@ -345,6 +360,7 @@
                 nodes[index] = updateNodeSize({ ...nodes[index], width: dragState.originWidth, height: dragState.originHeight }, deltaX, deltaY);
                 guides = { x: null, y: null };
             }
+            nodes = [...nodes];
             render();
         });
         window.addEventListener('mouseup', () => {
@@ -374,20 +390,32 @@
         document.getElementById('zoom-reset').onclick = () => { zoom = 0.67; applyZoom(); };
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
         const componentButtons = [];
-        COMPONENT_LIBRARY.forEach((type) => {
-            const meta = NODE_TYPE_META[type];
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'component-button';
-            btn.dataset.type = type;
-            btn.innerHTML = `${meta.label}<small>${Math.round(meta.defaultWidth)} × ${Math.round(meta.defaultHeight)}</small>`;
-            btn.addEventListener('click', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                addNode(type);
+        COMPONENT_GROUPS.forEach((group, groupIndex) => {
+            const details = document.createElement('details');
+            details.className = 'component-group';
+            if (groupIndex === 0) { details.open = true; }
+            const summary = document.createElement('summary');
+            summary.textContent = group.title;
+            details.appendChild(summary);
+            const body = document.createElement('div');
+            body.className = 'component-group-body';
+            group.items.filter((type) => COMPONENT_LIBRARY.includes(type)).forEach((type) => {
+                const meta = NODE_TYPE_META[type];
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'component-button';
+                btn.dataset.type = type;
+                btn.innerHTML = `${meta.label}<small>${Math.round(meta.defaultWidth)} × ${Math.round(meta.defaultHeight)}</small>`;
+                btn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    addNode(type);
+                });
+                componentButtons.push(btn);
+                body.appendChild(btn);
             });
-            componentButtons.push(btn);
-            componentList.appendChild(btn);
+            details.appendChild(body);
+            componentList.appendChild(details);
         });
         window.__FIGMA_DRAWER_DEBUG__ = {
             addNode,
