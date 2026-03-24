@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": "1.0",
+    "source": "visual-editor",
+    "description": "审批流列表页面 unified json"
+  },
+  "form": {
+    "pageType": "list",
+    "pageName": "审批流列表页面",
+    "notes": "",
+    "style": {
+      "colorPrimary": "#1677FF",
+      "radius": 12,
+      "looseness": "loose"
+    }
+  },
+  "wireframe": {
+    "canvas": {
+      "width": 960,
+      "height": 720
+    },
+    "nodes": [
+      {"id":"root","parentId":null,"type":"frame","name":"审批流列表页面","title":"审批流列表页面","text":"","x":0,"y":0,"width":960,"height":720},
+      {"id":"preset_list_0","parentId":"root","type":"sidebar","name":"左侧侧边栏","title":"侧边栏","text":"LOGO\n菜单导航","x":0,"y":0,"width":184,"height":720},
+      {"id":"preset_list_1","parentId":"root","type":"breadcrumb","name":"面包屑","title":"面包屑","text":"首页 / 系统配置 / 审批流配置\n（如果在对应的页面，就高亮对应的标题）","x":208,"y":24,"width":240,"height":32},
+      {"id":"preset_list_2","parentId":"root","type":"title","name":"标题","title":"列表页标题","text":"审批流配置","x":208,"y":64,"width":240,"height":40},
+      {"id":"preset_list_3","parentId":"root","type":"search","name":"搜索框","title":"搜索框","text":"flow_type搜索","x":208,"y":120,"width":152,"height":48},
+      {"id":"preset_list_4","parentId":"root","type":"button","name":"按钮","title":"新建按钮","text":"+ 新建","x":688,"y":64,"width":120,"height":40},
+      {"id":"preset_list_5","parentId":"root","type":"table","name":"表格区","title":"表格","text":"flow_type ｜ system_name ｜ status ｜ approval_id ｜ 操作（详情、编辑、删除）","x":208,"y":192,"width":720,"height":424},
+      {"id":"preset_list_6","parentId":"root","type":"pagination","name":"分页","title":"分页","text":"上一页 1 2 3 下一页\n（20条每页）","x":704,"y":624,"width":224,"height":40},
+      {"id":"node_1774320025769_hcfr","parentId":"root","type":"button","name":"按钮","title":"刷新按钮","text":"刷新","x":824,"y":64,"width":120,"height":40},
+      {"id":"node_1774320133702_9rin","parentId":"root","type":"search","name":"搜索框","title":"搜索框","text":"system_name搜索","x":400,"y":120,"width":152,"height":48},
+      {"id":"node_1774320191869_3zmc","parentId":"root","type":"button","name":"按钮","title":"查询按钮","text":"查询","x":608,"y":120,"width":120,"height":40},
+      {"id":"node_1774320225002_mw8c","parentId":"root","type":"button","name":"按钮","title":"重制按钮","text":"重制","x":768,"y":120,"width":120,"height":40}
+    ]
+  }
+}

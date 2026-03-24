@@ -32,6 +32,19 @@ First version uses full-page regeneration instead of node-level patching.
 
 ## Unified JSON workflow
 
+### 重要生成规范
+
+当用户提供 **unified json + 参考图片** 时，必须遵守：
+
+- **结构以 unified json 为唯一准绳**
+- **图片仅用于视觉风格参考**，不能反推、补全、臆造业务字段或业务数据
+- **禁止擅自新增表格行数据、统计数字、业务文案、ID、状态值**
+- 如果 unified json 没有提供真实数据：
+  - 表格只能画 **表头 + 空态/占位**，或
+  - 只保留 json 中已有的字段说明文本
+- 对企业内部 json / code：**默认只返回给用户，不落库、不提交**，除非用户明确要求写入仓库
+
+
 新增支持“线框 + 表单 → 总 JSON”的最小可用方案：
 
 - 线框示例：`examples/approval-flow-wireframe.json`
