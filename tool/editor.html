@@ -99,6 +99,8 @@
     </div>
     <script type="module">
         import { buildTemplateNodes, COMPONENT_LIBRARY, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, resolveParentId, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } from './editor-core.js';
+        window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
+        window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
