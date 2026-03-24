@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { constrainNode, createNode, DEFAULT_CANVAS, normalizeTableConfig, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
+import { appendTableColumn, appendTableRow, constrainNode, createNode, DEFAULT_CANVAS, normalizeTableConfig, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
 
 describe('editor-core', () => {
     it('creates node with defaults', () => {
@@ -50,5 +50,21 @@ describe('editor-core', () => {
         const updated = updateTableColumns(node, '姓名 ｜ 状态 ｜ 时间');
         expect(updated.tableConfig.columns).toEqual(['姓名', '状态', '时间']);
         expect(updated.text).toContain('姓名');
+    });
+
+    it('appends and removes table rows', () => {
+        const node = createNode({ id: 'table_4', type: 'table' });
+        const appended = appendTableRow(node);
+        expect(appended.tableConfig.rows.length).toBe(node.tableConfig.rows.length + 1);
+        const removed = removeTableRow(appended);
+        expect(removed.tableConfig.rows.length).toBe(node.tableConfig.rows.length);
+    });
+
+    it('appends and removes table columns', () => {
+        const node = createNode({ id: 'table_5', type: 'table' });
+        const appended = appendTableColumn(node, '新增列');
+        expect(appended.tableConfig.columns.at(-1)).toBe('新增列');
+        const removed = removeTableColumn(appended);
+        expect(removed.tableConfig.columns.length).toBe(node.tableConfig.columns.length);
     });
 });

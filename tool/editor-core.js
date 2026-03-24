@@ -100,6 +100,39 @@ export function updateTableCell(node, rowIndex, colIndex, value) {
     return { ...node, tableConfig: { columns: table.columns, rows } };
 }
 
+
+export function appendTableRow(node) {
+    const table = normalizeTableConfig(node.tableConfig);
+    return { ...node, tableConfig: { columns: table.columns, rows: [...table.rows, table.columns.map(() => '')] } };
+}
+
+export function removeTableRow(node) {
+    const table = normalizeTableConfig(node.tableConfig);
+    const rows = table.rows.length > 1 ? table.rows.slice(0, -1) : [table.columns.map(() => '')];
+    return { ...node, tableConfig: { columns: table.columns, rows } };
+}
+
+export function appendTableColumn(node, name = '') {
+    const table = normalizeTableConfig(node.tableConfig);
+    const nextName = String(name || `列${table.columns.length + 1}`);
+    return {
+        ...node,
+        text: [...table.columns, nextName].join(' ｜ '),
+        tableConfig: {
+            columns: [...table.columns, nextName],
+            rows: table.rows.map((row) => [...row, '']),
+        },
+    };
+}
+
+export function removeTableColumn(node) {
+    const table = normalizeTableConfig(node.tableConfig);
+    if (table.columns.length <= 1) return node;
+    const columns = table.columns.slice(0, -1);
+    const rows = table.rows.map((row) => row.slice(0, -1));
+    return { ...node, text: columns.join(' ｜ '), tableConfig: { columns, rows } };
+}
+
 export function updateTableColumns(node, columns) {
     const nextColumns = String(columns || '').split(/\||｜|,|，/).map((item) => item.trim()).filter(Boolean);
     const table = normalizeTableConfig({ columns: nextColumns, rows: node.tableConfig?.rows || [] });

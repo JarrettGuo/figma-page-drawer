@@ -90,6 +90,12 @@
                 <label>宽<input id="nodeWidth" type="number" /></label>
                 <label>高<input id="nodeHeight" type="number" /></label>
                 <button id="update-node">更新节点</button>
+                <div id="table-actions" class="row" style="display:none; margin-bottom:10px; flex-wrap:wrap;">
+                    <button id="add-row" type="button">增行</button>
+                    <button id="remove-row" type="button">删行</button>
+                    <button id="add-col" type="button">增列</button>
+                    <button id="remove-col" type="button">删列</button>
+                </div>
                 <button id="delete-node">删除节点</button>
             </div>
             <div class="actions">
@@ -105,13 +111,14 @@
         import * as Core from './editor-core.js';
         window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
         window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
-        const { DEFAULT_CANVAS, GRID_SIZE, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, normalizeTableConfig, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, updateTableCell, updateTableColumns, softSnap } = Core;
+        const { DEFAULT_CANVAS, GRID_SIZE, appendTableColumn, appendTableRow, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, normalizeTableConfig, parseUnifiedJson, removeTableColumn, removeTableRow, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, updateTableCell, updateTableColumns, softSnap } = Core;
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
         const treeView = document.getElementById('tree-view');
         const componentList = document.getElementById('component-list');
         const nodeEditor = document.getElementById('node-editor');
+        const tableActions = document.getElementById('table-actions');
         const formIds = ['pageType', 'pageName', 'notes'];
         const nodeEditorIds = ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight'];
         const COMPONENT_GROUPS = [
@@ -298,9 +305,20 @@
                 if (isActiveField) return;
                 el.value = fieldValues[id] ?? '';
             });
+            tableActions.style.display = node && node.type === 'table' ? 'flex' : 'none';
             isSyncingEditor = false;
         };
         const updateNode = () => { applyNodeEditorChanges({ push: true }); };
+        const mutateActiveTable = (mutator) => {
+            const index = nodes.findIndex((item) => item.id === activeId && item.type === 'table');
+            if (index < 0) return;
+            pushHistory();
+            nodes[index] = constrainNode(mutator(nodes[index]), DEFAULT_CANVAS);
+            nodes = [...nodes];
+            render();
+            exportJson();
+        };
+
         const deleteNode = () => {
             if (!activeId) return;
             pushHistory();
@@ -474,6 +492,10 @@
         document.getElementById('duplicate-node').onclick = copyNode;
         document.getElementById('update-node').onclick = updateNode;
         document.getElementById('delete-node').onclick = deleteNode;
+        document.getElementById('add-row').onclick = () => mutateActiveTable((node) => appendTableRow(node));
+        document.getElementById('remove-row').onclick = () => mutateActiveTable((node) => removeTableRow(node));
+        document.getElementById('add-col').onclick = () => mutateActiveTable((node) => appendTableColumn(node));
+        document.getElementById('remove-col').onclick = () => mutateActiveTable((node) => removeTableColumn(node));
         document.getElementById('export-json').onclick = exportJson;
         document.getElementById('copy-json').onclick = async () => { if (!output.value) exportJson(); await navigator.clipboard.writeText(output.value); };
         document.getElementById('import-json').onclick = importJson;
