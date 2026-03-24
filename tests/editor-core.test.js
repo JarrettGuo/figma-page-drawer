@@ -8,6 +8,11 @@ describe('editor-core', () => {
         expect(node.width).toBeGreaterThan(0);
     });
 
+    it('preserves explicit zIndex on node creation', () => {
+        const node = createNode({ type: 'card', zIndex: 23 });
+        expect(node.zIndex).toBe(23);
+    });
+
     it('constrains node within canvas', () => {
         const node = constrainNode({ id: '1', x: 950, y: 700, width: 200, height: 100 }, DEFAULT_CANVAS);
         expect(node.x + node.width).toBeLessThanOrEqual(DEFAULT_CANVAS.width);

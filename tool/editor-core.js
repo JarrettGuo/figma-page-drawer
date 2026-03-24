@@ -94,7 +94,7 @@ export function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 
-export function createNode({ id, type = 'text', name, title, text = '', x = 40, y = 40, width, height, parentId = 'root', tableConfig }) {
+export function createNode({ id, type = 'text', name, title, text = '', x = 40, y = 40, width, height, parentId = 'root', tableConfig, zIndex = 0 }) {
     const meta = NODE_TYPE_META[type] || NODE_TYPE_META.text;
     const finalName = name || meta.label || '未命名组件';
     return {
@@ -108,6 +108,7 @@ export function createNode({ id, type = 'text', name, title, text = '', x = 40, 
         y: softSnap(y),
         width: Math.max(GRID_SIZE, softSnap(width ?? meta.defaultWidth ?? 240)),
         height: Math.max(GRID_SIZE, softSnap(height ?? meta.defaultHeight ?? 120)),
+        zIndex: Number.isFinite(Number(zIndex)) ? Number(zIndex) : 0,
         ...(type === 'table' ? { tableConfig: normalizeTableConfig(tableConfig || meta.defaultTable) } : {}),
     };
 }

@@ -103,6 +103,7 @@
                 <label>Y<input id="nodeY" type="number" /></label>
                 <label>宽<input id="nodeWidth" type="number" /></label>
                 <label>高<input id="nodeHeight" type="number" /></label>
+                <label>Z轴<input id="nodeZIndex" type="number" /></label>
                 <div class="row" style="margin-bottom:10px;">
                     <button id="bring-forward" type="button">前移</button>
                     <button id="send-backward" type="button">后移</button>
@@ -142,7 +143,7 @@
         const tableActions = document.getElementById('table-actions');
         const tableEditor = document.getElementById('table-editor');
         const formIds = ['pageType', 'pageName', 'notes'];
-        const nodeEditorIds = ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight'];
+        const nodeEditorIds = ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight','nodeZIndex'];
         const COMPONENT_GROUPS = [
             { key: 'layout', title: '布局类', items: ['sidebar', 'tabs', 'breadcrumb'] },
             { key: 'form', title: '表单类', items: ['input', 'select', 'datePicker', 'search', 'button'] },
@@ -194,7 +195,7 @@
         const render = () => {
             closeInlineEditor();
             canvas.innerHTML = '';
-            const ordered = [...nodes];
+            const ordered = [...nodes].sort((a, b) => Number(a.zIndex || 0) - Number(b.zIndex || 0) || nodes.indexOf(a) - nodes.indexOf(b));
             ordered.forEach((rawNode) => {
                 const node = constrainNode(rawNode, DEFAULT_CANVAS);
                 const meta = NODE_TYPE_META[node.type] || { color: '#E5E7EB' };
@@ -206,7 +207,7 @@
                 el.style.width = `${node.width}px`;
                 el.style.height = `${node.height}px`;
                 el.style.background = meta.color;
-                el.style.zIndex = String(10 + ordered.findIndex((item) => item.id === node.id) + depth * 100);
+                el.style.zIndex = String(10 + Number(node.zIndex || 0) + depth * 1000 + ordered.findIndex((item) => item.id === node.id));
                 el.dataset.id = node.id;
                 const titleEl = document.createElement('div');
                 titleEl.className = 'node-title';
