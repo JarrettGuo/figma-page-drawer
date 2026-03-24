@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyAlignment, buildTemplateNodes, buildUnifiedJson, COMPONENT_LIBRARY, createNode, duplicateNode, findAlignmentGuides, normalizeFormInput, parseUnifiedJson, resolveParentId, serializeState, snapToGrid, splitCsv, softSnap, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle } from '../tool/editor-core.js';
+import { applyAlignment, buildTemplateNodes, buildUnifiedJson, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, normalizeFormInput, parseUnifiedJson, resolveParentId, serializeState, snapToGrid, splitCsv, softSnap, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle } from '../tool/editor-core.js';
 
 describe('visual editor core', () => {
     it('creates node with defaults and soft snap', () => {
@@ -68,6 +68,12 @@ describe('visual editor core', () => {
         const guides = findAlignmentGuides(moved, [base, moved]);
         expect(guides.x).toBe(80);
         expect(applyAlignment(moved, guides).x).toBe(80);
+    });
+
+    it('constrains node within canvas bounds', () => {
+        const constrained = constrainNode(createNode({ id: 'n2', x: 900, y: 700, width: 200, height: 100 }), { width: 960, height: 720 });
+        expect(constrained.x).toBeLessThanOrEqual(760);
+        expect(constrained.y).toBeLessThanOrEqual(620);
     });
 
     it('splits csv safely', () => {

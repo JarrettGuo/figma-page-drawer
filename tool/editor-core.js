@@ -37,22 +37,7 @@ export const NODE_TYPE_META = {
 };
 
 export const COMPONENT_LIBRARY = [
-    'sidebar',
-    'button',
-    'input',
-    'select',
-    'datePicker',
-    'search',
-    'table',
-    'card',
-    'tag',
-    'text',
-    'title',
-    'image',
-    'modal',
-    'pagination',
-    'tabs',
-    'breadcrumb',
+    'sidebar', 'button', 'input', 'select', 'datePicker', 'search', 'table', 'card', 'tag', 'text', 'title', 'image', 'modal', 'pagination', 'tabs', 'breadcrumb',
 ];
 
 export const PRESET_TEMPLATES = {
@@ -76,18 +61,11 @@ export function softSnap(value, grid = GRID_SIZE) {
     return Math.round(numeric / grid) * grid;
 }
 
-export function createNode({
-    id,
-    type = 'text',
-    name,
-    title,
-    text = '',
-    x = 40,
-    y = 40,
-    width,
-    height,
-    parentId = 'root',
-}) {
+export function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
+export function createNode({ id, type = 'text', name, title, text = '', x = 40, y = 40, width, height, parentId = 'root' }) {
     const meta = NODE_TYPE_META[type] || NODE_TYPE_META.text;
     const finalName = name || meta.label || '未命名组件';
     return {
@@ -118,82 +96,56 @@ export function normalizeFormInput(raw) {
 }
 
 export function splitCsv(value) {
-    return String(value || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
+    return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 export function resolveParentId(nodes, activeId, preferredParentId = 'root') {
-    if (!activeId) {
-        return preferredParentId;
-    }
+    if (!activeId) return preferredParentId;
     const node = nodes.find((item) => item.id === activeId);
-    if (!node) {
-        return preferredParentId;
-    }
+    if (!node) return preferredParentId;
     return node.type === 'card' || node.type === 'modal' ? node.id : (node.parentId || preferredParentId);
 }
 
 export function findAlignmentGuides(node, nodes) {
     const guides = { x: null, y: null };
     nodes.filter((item) => item.id !== node.id).forEach((item) => {
-        if (Math.abs(item.x - node.x) <= ALIGN_THRESHOLD) {
-            guides.x = item.x;
-        }
-        if (Math.abs(item.y - node.y) <= ALIGN_THRESHOLD) {
-            guides.y = item.y;
-        }
+        if (Math.abs(item.x - node.x) <= ALIGN_THRESHOLD) guides.x = item.x;
+        if (Math.abs(item.y - node.y) <= ALIGN_THRESHOLD) guides.y = item.y;
     });
     return guides;
 }
 
 export function applyAlignment(node, guides) {
-    return {
-        ...node,
-        x: guides.x ?? node.x,
-        y: guides.y ?? node.y,
-    };
+    return { ...node, x: guides.x ?? node.x, y: guides.y ?? node.y };
 }
 
-export function updateNodePosition(node, deltaX, deltaY, guides = null) {
-    const moved = {
-        ...node,
-        x: Math.max(0, softSnap(node.x + deltaX)),
-        y: Math.max(0, softSnap(node.y + deltaY)),
-    };
-    return guides ? applyAlignment(moved, guides) : moved;
+export function constrainNode(node, canvas = DEFAULT_CANVAS) {
+    const width = clamp(softSnap(node.width), GRID_SIZE * 3, canvas.width);
+    const height = clamp(softSnap(node.height), GRID_SIZE * 3, canvas.height);
+    const x = clamp(softSnap(node.x), 0, Math.max(0, canvas.width - width));
+    const y = clamp(softSnap(node.y), 0, Math.max(0, canvas.height - height));
+    return { ...node, x, y, width, height };
 }
 
-export function updateNodeSize(node, deltaWidth, deltaHeight) {
-    return {
-        ...node,
-        width: Math.max(GRID_SIZE * 3, softSnap(node.width + deltaWidth)),
-        height: Math.max(GRID_SIZE * 3, softSnap(node.height + deltaHeight)),
-    };
+export function updateNodePosition(node, deltaX, deltaY, guides = null, canvas = DEFAULT_CANVAS) {
+    const moved = constrainNode({ ...node, x: node.x + deltaX, y: node.y + deltaY }, canvas);
+    return guides ? constrainNode(applyAlignment(moved, guides), canvas) : moved;
+}
+
+export function updateNodeSize(node, deltaWidth, deltaHeight, canvas = DEFAULT_CANVAS) {
+    return constrainNode({ ...node, width: node.width + deltaWidth, height: node.height + deltaHeight }, canvas);
 }
 
 export function updateNodeText(node, text) {
-    return {
-        ...node,
-        text: String(text || ''),
-    };
+    return { ...node, text: String(text || '') };
 }
 
 export function updateNodeTitle(node, title) {
-    return {
-        ...node,
-        title: String(title || ''),
-    };
+    return { ...node, title: String(title || '') };
 }
 
 export function duplicateNode(node) {
-    return createNode({
-        ...node,
-        id: `${node.id}_copy_${Date.now()}`,
-        x: node.x + 24,
-        y: node.y + 24,
-    });
+    return createNode({ ...node, id: `${node.id}_copy_${Date.now()}`, x: node.x + 24, y: node.y + 24 });
 }
 
 export function buildTemplateNodes(templateKey) {
@@ -203,29 +155,11 @@ export function buildTemplateNodes(templateKey) {
 
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
     return {
-        meta: {
-            version: '1.0',
-            source: 'visual-editor',
-            description: `${form.pageName || '未命名页面'} unified json`,
-        },
+        meta: { version: '1.0', source: 'visual-editor', description: `${form.pageName || '未命名页面'} unified json` },
         form,
         wireframe: {
             canvas,
-            nodes: [
-                {
-                    id: 'root',
-                    parentId: null,
-                    type: 'frame',
-                    name: form.pageName || '未命名页面',
-                    title: form.pageName || '未命名页面',
-                    text: '',
-                    x: 0,
-                    y: 0,
-                    width: canvas.width,
-                    height: canvas.height,
-                },
-                ...nodes,
-            ],
+            nodes: [{ id: 'root', parentId: null, type: 'frame', name: form.pageName || '未命名页面', title: form.pageName || '未命名页面', text: '', x: 0, y: 0, width: canvas.width, height: canvas.height }, ...nodes],
         },
     };
 }
@@ -233,14 +167,7 @@ export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) 
 export function parseUnifiedJson(input) {
     const data = typeof input === 'string' ? JSON.parse(input) : input;
     return {
-        form: {
-            ...DEFAULT_FORM,
-            ...(data.form || {}),
-            style: {
-                ...DEFAULT_FORM.style,
-                ...(data.form?.style || {}),
-            },
-        },
+        form: { ...DEFAULT_FORM, ...(data.form || {}), style: { ...DEFAULT_FORM.style, ...(data.form?.style || {}) } },
         canvas: data.wireframe?.canvas || DEFAULT_CANVAS,
         nodes: (data.wireframe?.nodes || []).filter((node) => node.id !== 'root'),
     };

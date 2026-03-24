@@ -7,8 +7,8 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; font-family: Inter, Arial, sans-serif; background: #f3f4f6; color: #111827; }
-        .app { display: grid; grid-template-columns: 280px 1fr 320px; min-height: 100vh; }
-        .panel { background: #fff; border-right: 1px solid #e5e7eb; padding: 16px; overflow: auto; }
+        .app { display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; min-height: 100vh; height: 100vh; overflow: hidden; }
+        .panel { background: #fff; border-right: 1px solid #e5e7eb; padding: 16px; overflow: auto; height: 100vh; }
         .panel.right { border-right: 0; border-left: 1px solid #e5e7eb; }
         h1, h2, h3 { margin: 0 0 12px; }
         .field-list, .actions, .component-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
@@ -16,9 +16,9 @@
         button, select, input, textarea { width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 10px 12px; background: #fff; }
         button { cursor: pointer; }
         button.primary { background: #1677ff; border-color: #1677ff; color: #fff; }
-        .canvas-wrap { padding: 16px; overflow: auto; display: flex; flex-direction: column; align-items: center; }
-        .canvas-shell { width: 100%; max-width: 760px; }
-        .canvas-frame { transform-origin: top center; }
+        .canvas-wrap { padding: 16px; overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .canvas-shell { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        .canvas-frame { transform-origin: center center; display: flex; align-items: center; justify-content: center; flex: 1; }
         .zoom-bar { display: flex; gap: 8px; margin-bottom: 12px; }
         .canvas {
             position: relative; width: 960px; height: 720px; background: #fff; border: 1px solid #d1d5db;
@@ -54,7 +54,7 @@
     <div class="app">
         <aside class="panel">
             <h1>组件区</h1>
-            <div class="hint">组件已按类别分组。点击组件会直接插入到中间展示区中心附近。</div>
+            <div class="hint">左右栏固定，中间展示区占满剩余空间并居中显示。节点不会超出中间网格。</div>
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
@@ -73,7 +73,7 @@
         <main class="canvas-wrap">
             <div class="canvas-shell">
                 <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
-                <div class="hint">展示区：双击标题或正文都能改字；拖动和缩放保留；右侧更新节点后这里会立即同步。</div>
+                <div class="hint">中间展示区 100% 占满剩余区域；画布居中；组件位置和尺寸都会被限制在网格边界内。</div>
                 <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
             </div>
         </main>
@@ -106,7 +106,7 @@
         import * as Core from './editor-core.js';
         window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
         window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
-        const { buildTemplateNodes, COMPONENT_LIBRARY, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
+        const { DEFAULT_CANVAS, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
@@ -123,17 +123,24 @@
         let activeId = null;
         let dragState = null;
         let inlineEditor = null;
-        let zoom = 0.67;
+        let zoom = 1;
         let guides = { x: null, y: null };
         const history = [];
         const future = [];
 
+        const fitCanvasZoom = () => {
+            const container = canvasFrame.getBoundingClientRect();
+            if (!container.width || !container.height) return 1;
+            const widthRatio = (container.width - 24) / DEFAULT_CANVAS.width;
+            const heightRatio = (container.height - 24) / DEFAULT_CANVAS.height;
+            return Math.max(0.5, Math.min(1, Number(Math.min(widthRatio, heightRatio).toFixed(2))));
+        };
         const snapshot = () => ({ nodes: JSON.parse(JSON.stringify(nodes)), form: getFormRaw(), activeId, zoom });
         const pushHistory = () => { history.push(snapshot()); if (history.length > 50) { history.shift(); } future.length = 0; };
         const restore = (state) => {
             nodes = state.nodes || [];
             activeId = state.activeId || null;
-            zoom = state.zoom || 0.67;
+            zoom = state.zoom || fitCanvasZoom();
             Object.entries(state.form || {}).forEach(([key, value]) => { const el = document.getElementById(key); if (el) { el.value = value; } });
             applyZoom(); render(); exportJson();
         };
@@ -149,7 +156,8 @@
             closeInlineEditor();
             canvas.innerHTML = '';
             const ordered = [...nodes].sort((a, b) => getDepth(a) - getDepth(b));
-            ordered.forEach((node) => {
+            ordered.forEach((rawNode) => {
+                const node = constrainNode(rawNode, DEFAULT_CANVAS);
                 const meta = NODE_TYPE_META[node.type] || { color: '#E5E7EB' };
                 const depth = getDepth(node);
                 const el = document.createElement('div');
@@ -183,38 +191,25 @@
         };
         const getFormRaw = () => Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value]));
         const getFormData = () => normalizeFormInput(getFormRaw());
-        const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 960, height: 720 } }); };
+        const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: DEFAULT_CANVAS }); };
         const computeInsertPosition = (meta) => {
-            const centerX = Math.max(24, Math.round((960 - (meta.defaultWidth || 160)) / 2 / 8) * 8);
-            const centerY = Math.max(24, Math.round((720 - (meta.defaultHeight || 60)) / 2 / 8) * 8);
+            const centerX = Math.max(24, Math.round((DEFAULT_CANVAS.width - (meta.defaultWidth || 160)) / 2 / 8) * 8);
+            const centerY = Math.max(24, Math.round((DEFAULT_CANVAS.height - (meta.defaultHeight || 60)) / 2 / 8) * 8);
             const offset = Math.min(nodes.length, 6) * 16;
             return { x: centerX + offset, y: centerY + offset };
         };
         const addNode = (type) => {
-            console.log('[figma-drawer] addNode', type);
             pushHistory();
             const meta = NODE_TYPE_META[type] || { label: '组件', defaultWidth: 160, defaultHeight: 60, defaultText: '组件内容' };
-            const parentId = 'root';
             const pos = computeInsertPosition(meta);
-            const node = createNode({
-                id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                type,
-                parentId,
-                name: meta.label,
-                title: meta.label,
-                text: meta.defaultText,
-                x: pos.x,
-                y: pos.y,
-                width: meta.defaultWidth,
-                height: meta.defaultHeight,
-            });
+            const node = constrainNode(createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId: 'root', name: meta.label, title: meta.label, text: meta.defaultText, x: pos.x, y: pos.y, width: meta.defaultWidth, height: meta.defaultHeight }), DEFAULT_CANVAS);
             nodes = [...nodes, node];
             activeId = node.id;
             render();
             exportJson();
             return node;
         };
-        const insertPreset = (key) => { pushHistory(); nodes = [...nodes, ...buildTemplateNodes(key)]; render(); exportJson(); };
+        const insertPreset = (key) => { pushHistory(); nodes = [...nodes, ...buildTemplateNodes(key).map((node) => constrainNode(node, DEFAULT_CANVAS))]; render(); exportJson(); };
         const selectNode = (id) => { activeId = id; render(); };
         const syncNodeEditor = () => {
             const node = nodes.find((item) => item.id === activeId);
@@ -235,7 +230,7 @@
             if (index < 0) { return; }
             pushHistory();
             const current = nodes[index];
-            const next = {
+            const next = constrainNode({
                 ...current,
                 parentId: document.getElementById('nodeParentId').value || 'root',
                 type: document.getElementById('nodeType').value,
@@ -246,7 +241,7 @@
                 y: softSnap(document.getElementById('nodeY').value),
                 width: Math.max(24, softSnap(document.getElementById('nodeWidth').value)),
                 height: Math.max(24, softSnap(document.getElementById('nodeHeight').value)),
-            };
+            }, DEFAULT_CANVAS);
             nodes = nodes.map((item, itemIndex) => (itemIndex === index ? next : item));
             activeId = next.id;
             render();
@@ -260,10 +255,7 @@
             while (changed) {
                 changed = false;
                 nodes.forEach((item) => {
-                    if (deleteIds.has(item.parentId) && !deleteIds.has(item.id)) {
-                        deleteIds.add(item.id);
-                        changed = true;
-                    }
+                    if (deleteIds.has(item.parentId) && !deleteIds.has(item.id)) { deleteIds.add(item.id); changed = true; }
                 });
             }
             nodes = nodes.filter((item) => !deleteIds.has(item.id));
@@ -271,14 +263,14 @@
             render();
             exportJson();
         };
-        const copyNode = () => { const node = nodes.find((item) => item.id === activeId); if (!node) { return; } pushHistory(); const copied = duplicateNode(node); nodes = [...nodes, copied]; activeId = copied.id; render(); exportJson(); };
+        const copyNode = () => { const node = nodes.find((item) => item.id === activeId); if (!node) { return; } pushHistory(); const copied = constrainNode(duplicateNode(node), DEFAULT_CANVAS); nodes = [...nodes, copied]; activeId = copied.id; render(); exportJson(); };
         const undo = () => { const state = history.pop(); if (!state) { return; } future.push(snapshot()); restore(state); };
         const redo = () => { const state = future.pop(); if (!state) { return; } history.push(snapshot()); restore(state); };
         const importJson = () => {
             try {
                 pushHistory();
                 const parsed = parseUnifiedJson(output.value);
-                nodes = parsed.nodes || [];
+                nodes = (parsed.nodes || []).map((node) => constrainNode(node, DEFAULT_CANVAS));
                 const form = parsed.form || {};
                 document.getElementById('pageType').value = form.pageType || 'list';
                 document.getElementById('pageName').value = form.pageName || '未命名页面';
@@ -316,12 +308,8 @@
             textarea.style.height = `${field === 'title' ? 42 : Math.max(48, node.height - 34)}px`;
             textarea.addEventListener('mousedown', (mouseEvent) => mouseEvent.stopPropagation());
             textarea.addEventListener('keydown', (keyEvent) => {
-                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') {
-                    saveInlineEditor(id, textarea.value, field);
-                }
-                if (keyEvent.key === 'Escape') {
-                    closeInlineEditor();
-                }
+                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') saveInlineEditor(id, textarea.value, field);
+                if (keyEvent.key === 'Escape') closeInlineEditor();
             });
             textarea.addEventListener('blur', () => saveInlineEditor(id, textarea.value, field));
             canvas.appendChild(textarea);
@@ -334,47 +322,38 @@
             if (index >= 0) {
                 pushHistory();
                 nodes[index] = field === 'title' ? updateNodeTitle(nodes[index], value) : updateNodeText(nodes[index], value);
+                nodes[index] = constrainNode(nodes[index], DEFAULT_CANVAS);
                 nodes = [...nodes];
             }
             closeInlineEditor();
             render();
             exportJson();
         };
-        const closeInlineEditor = () => {
-            if (inlineEditor && inlineEditor.parentNode) {
-                inlineEditor.parentNode.removeChild(inlineEditor);
-            }
-            inlineEditor = null;
-        };
+        const closeInlineEditor = () => { if (inlineEditor && inlineEditor.parentNode) inlineEditor.parentNode.removeChild(inlineEditor); inlineEditor = null; };
         window.addEventListener('mousemove', (event) => {
-            if (!dragState) { return; }
+            if (!dragState) return;
             const index = nodes.findIndex((item) => item.id === dragState.id);
-            if (index < 0) { return; }
+            if (index < 0) return;
             const deltaX = (event.clientX - dragState.startX) / zoom;
             const deltaY = (event.clientY - dragState.startY) / zoom;
             if (dragState.mode === 'move') {
-                const moved = updateNodePosition({ ...nodes[index], x: dragState.originX, y: dragState.originY }, deltaX, deltaY);
+                const moved = updateNodePosition({ ...nodes[index], x: dragState.originX, y: dragState.originY }, deltaX, deltaY, null, DEFAULT_CANVAS);
                 guides = findAlignmentGuides(moved, nodes);
-                nodes[index] = updateNodePosition({ ...nodes[index], x: dragState.originX, y: dragState.originY }, deltaX, deltaY, guides);
+                nodes[index] = updateNodePosition({ ...nodes[index], x: dragState.originX, y: dragState.originY }, deltaX, deltaY, guides, DEFAULT_CANVAS);
             } else {
-                nodes[index] = updateNodeSize({ ...nodes[index], width: dragState.originWidth, height: dragState.originHeight }, deltaX, deltaY);
+                nodes[index] = updateNodeSize({ ...nodes[index], width: dragState.originWidth, height: dragState.originHeight }, deltaX, deltaY, DEFAULT_CANVAS);
                 guides = { x: null, y: null };
             }
             nodes = [...nodes];
             render();
         });
-        window.addEventListener('mouseup', () => {
-            if (dragState) { exportJson(); }
-            guides = { x: null, y: null };
-            dragState = null;
-            render();
-        });
+        window.addEventListener('mouseup', () => { if (dragState) exportJson(); guides = { x: null, y: null }; dragState = null; render(); });
         window.addEventListener('keydown', (event) => {
-            if (inlineEditor) { return; }
+            if (inlineEditor) return;
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); copyNode(); }
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) { event.preventDefault(); undo(); }
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redo(); }
-            if (event.key === 'Delete') { deleteNode(); }
+            if (event.key === 'Delete') deleteNode();
         });
         document.getElementById('preset-list').onclick = () => insertPreset('list');
         document.getElementById('undo').onclick = undo;
@@ -383,17 +362,18 @@
         document.getElementById('update-node').onclick = updateNode;
         document.getElementById('delete-node').onclick = deleteNode;
         document.getElementById('export-json').onclick = exportJson;
-        document.getElementById('copy-json').onclick = async () => { if (!output.value) { exportJson(); } await navigator.clipboard.writeText(output.value); };
+        document.getElementById('copy-json').onclick = async () => { if (!output.value) exportJson(); await navigator.clipboard.writeText(output.value); };
         document.getElementById('import-json').onclick = importJson;
         document.getElementById('zoom-in').onclick = () => { zoom = Math.min(2, Number((zoom + 0.1).toFixed(2))); applyZoom(); };
         document.getElementById('zoom-out').onclick = () => { zoom = Math.max(0.5, Number((zoom - 0.1).toFixed(2))); applyZoom(); };
-        document.getElementById('zoom-reset').onclick = () => { zoom = 0.67; applyZoom(); };
+        document.getElementById('zoom-reset').onclick = () => { zoom = fitCanvasZoom(); applyZoom(); };
+        window.addEventListener('resize', () => { zoom = fitCanvasZoom(); applyZoom(); });
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
         const componentButtons = [];
         COMPONENT_GROUPS.forEach((group, groupIndex) => {
             const details = document.createElement('details');
             details.className = 'component-group';
-            if (groupIndex === 0) { details.open = true; }
+            if (groupIndex === 0) details.open = true;
             const summary = document.createElement('summary');
             summary.textContent = group.title;
             details.appendChild(summary);
@@ -406,28 +386,15 @@
                 btn.className = 'component-button';
                 btn.dataset.type = type;
                 btn.innerHTML = `${meta.label}<small>${Math.round(meta.defaultWidth)} × ${Math.round(meta.defaultHeight)}</small>`;
-                btn.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    addNode(type);
-                });
+                btn.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); addNode(type); });
                 componentButtons.push(btn);
                 body.appendChild(btn);
             });
             details.appendChild(body);
             componentList.appendChild(details);
         });
-        window.__FIGMA_DRAWER_DEBUG__ = {
-            addNode,
-            getNodes: () => nodes,
-            componentButtons,
-            clickType: (type) => {
-                const btn = componentButtons.find((item) => item.dataset.type === type);
-                if (!btn) { throw new Error(`button not found: ${type}`); }
-                btn.click();
-                return nodes;
-            }
-        };
+        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, componentButtons, clickType: (type) => { const btn = componentButtons.find((item) => item.dataset.type === type); if (!btn) throw new Error(`button not found: ${type}`); btn.click(); return nodes; } };
+        zoom = fitCanvasZoom();
         applyZoom(); exportJson(); render();
     </script>
 </body>
