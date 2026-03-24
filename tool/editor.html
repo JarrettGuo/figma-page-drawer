@@ -104,13 +104,7 @@
                 <label>宽<input id="nodeWidth" type="number" /></label>
                 <label>高<input id="nodeHeight" type="number" /></label>
                 <label>Z轴<input id="nodeZIndex" type="number" /></label>
-                <div class="row" style="margin-bottom:10px;">
-                    <button id="bring-forward" type="button">前移</button>
-                    <button id="send-backward" type="button">后移</button>
-                    <button id="bring-front" type="button">置顶</button>
-                    <button id="send-back" type="button">置底</button>
-                </div>
-                <button id="update-node">更新节点</button>
+                                <button id="update-node">更新节点</button>
                 <div id="table-actions" class="row" style="display:none; margin-bottom:10px; flex-wrap:wrap;">
                     <button id="add-row" type="button">增行</button>
                     <button id="remove-row" type="button">删行</button>
@@ -195,7 +189,10 @@
         const render = () => {
             closeInlineEditor();
             canvas.innerHTML = '';
-            const ordered = [...nodes].sort((a, b) => Number(a.zIndex || 0) - Number(b.zIndex || 0) || nodes.indexOf(a) - nodes.indexOf(b));
+            const ordered = [...nodes]
+                .map((node, index) => ({ node, index }))
+                .sort((a, b) => Number(a.node.zIndex || 0) - Number(b.node.zIndex || 0) || a.index - b.index)
+                .map((item) => item.node);
             ordered.forEach((rawNode) => {
                 const node = constrainNode(rawNode, DEFAULT_CANVAS);
                 const meta = NODE_TYPE_META[node.type] || { color: '#E5E7EB' };
@@ -211,7 +208,7 @@
                 el.dataset.id = node.id;
                 const titleEl = document.createElement('div');
                 titleEl.className = 'node-title';
-                titleEl.innerHTML = `<span>${node.title || node.name}</span><span class="node-level">L${depth}</span>`;
+                titleEl.innerHTML = `<span>${node.title || node.name}</span><span class="node-level">L${depth} · Z${Number(node.zIndex || 0)}</span>`;
                 titleEl.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'title'));
                 const textEl = document.createElement('div');
                 textEl.className = 'node-text';
@@ -427,21 +424,6 @@
             exportJson();
         };
 
-        const moveLayer = (mode) => {
-            const index = nodes.findIndex((item) => item.id === activeId);
-            if (index < 0) return;
-            pushHistory();
-            const next = [...nodes];
-            const [item] = next.splice(index, 1);
-            if (mode === 'forward') next.splice(Math.min(index + 1, next.length), 0, item);
-            if (mode === 'backward') next.splice(Math.max(index - 1, 0), 0, item);
-            if (mode === 'front') next.push(item);
-            if (mode === 'back') next.unshift(item);
-            nodes = next;
-            render();
-            exportJson();
-        };
-
         const deleteNode = () => {
             if (!activeId) return;
             pushHistory();
@@ -625,10 +607,6 @@
         document.getElementById('redo').onclick = redo;
         document.getElementById('duplicate-node').onclick = copyNode;
         document.getElementById('update-node').onclick = updateNode;
-        document.getElementById('bring-forward').onclick = () => moveLayer('forward');
-        document.getElementById('send-backward').onclick = () => moveLayer('backward');
-        document.getElementById('bring-front').onclick = () => moveLayer('front');
-        document.getElementById('send-back').onclick = () => moveLayer('back');
         document.getElementById('delete-node').onclick = deleteNode;
         document.getElementById('add-row').onclick = () => mutateActiveTable((node) => appendTableRow(node));
         document.getElementById('remove-row').onclick = () => mutateActiveTable((node) => removeTableRow(node));
