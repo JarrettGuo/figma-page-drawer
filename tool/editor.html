@@ -60,7 +60,16 @@
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
-                <div class="row"><button id="preset-list">插入列表页模板</button><button id="duplicate-node">复制选中</button></div>
+                <div class="row">
+                    <select id="template-select">
+                        <option value="list">列表页模板</option>
+                        <option value="dashboard">Dashboard 模板</option>
+                        <option value="form">表单页模板</option>
+                        <option value="detail">详情页模板</option>
+                    </select>
+                    <button id="import-template">一键导入</button>
+                </div>
+                <div class="row"><button id="duplicate-node">复制选中</button></div>
                 <div class="row"><button id="undo">撤销</button><button id="redo">重做</button></div>
             </div>
             <div class="section-block">
@@ -576,7 +585,7 @@
         document.addEventListener('mousedown', (event) => {
             if (!nodeEditor.contains(event.target) && !isComposing) applyNodeEditorChanges({ push: true });
         }, true);
-        document.getElementById('preset-list').onclick = () => insertPreset('list');
+        document.getElementById('import-template').onclick = () => insertPreset(document.getElementById('template-select').value || 'list');
         document.getElementById('undo').onclick = undo;
         document.getElementById('redo').onclick = redo;
         document.getElementById('duplicate-node').onclick = copyNode;

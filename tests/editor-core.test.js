@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendTableColumn, appendTableRow, buildUnifiedJson, constrainNode, createNode, DEFAULT_CANVAS, isPaginationInsideTable, normalizeTableConfig, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
+import { appendTableColumn, appendTableRow, buildTemplateNodes, buildUnifiedJson, constrainNode, createNode, DEFAULT_CANVAS, isPaginationInsideTable, normalizeTableConfig, PRESET_TEMPLATES, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
 
 describe('editor-core', () => {
     it('creates node with defaults', () => {
@@ -75,5 +75,12 @@ describe('editor-core', () => {
         const unified = buildUnifiedJson({ form: { pageName: 'test' }, nodes: [table, pagination], canvas: DEFAULT_CANVAS });
         const exportedPagination = unified.wireframe.nodes.find((item) => item.id === 'pagination_1');
         expect(exportedPagination.parentId).toBe('table_6');
+    });
+
+    it('provides multiple preset templates for one-click import', () => {
+        expect(Object.keys(PRESET_TEMPLATES)).toEqual(expect.arrayContaining(['list', 'dashboard', 'form', 'detail']));
+        expect(buildTemplateNodes('dashboard').length).toBeGreaterThan(0);
+        expect(buildTemplateNodes('form').length).toBeGreaterThan(0);
+        expect(buildTemplateNodes('detail').length).toBeGreaterThan(0);
     });
 });
