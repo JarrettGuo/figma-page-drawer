@@ -62,10 +62,14 @@
                 <div id="component-list" class="component-list"></div>
                 <div class="row">
                     <select id="template-select">
-                        <option value="list">列表页模板</option>
-                        <option value="dashboard">Dashboard 模板</option>
-                        <option value="form">表单页模板</option>
-                        <option value="detail">详情页模板</option>
+                        <option value="list">列表页模板（侧栏 + 筛选 + 表格）</option>
+                        <option value="dashboard">Dashboard 模板（指标卡 + 表格）</option>
+                        <option value="form">表单页模板（表单容器）</option>
+                        <option value="detail">详情页模板（信息卡 + 日志）</option>
+                    </select>
+                    <select id="template-import-mode">
+                        <option value="replace">清空导入</option>
+                        <option value="append">追加导入</option>
                     </select>
                     <button id="import-template">一键导入</button>
                 </div>
@@ -294,7 +298,14 @@
             exportJson();
             return node;
         };
-        const insertPreset = (key) => { pushHistory(); nodes = [...nodes, ...buildTemplateNodes(key).map((node) => constrainNode(node, DEFAULT_CANVAS))]; render(); exportJson(); };
+        const insertPreset = (key, mode = 'append') => {
+            pushHistory();
+            const presetNodes = buildTemplateNodes(key).map((node) => constrainNode(node, DEFAULT_CANVAS));
+            nodes = mode === 'replace' ? presetNodes : [...nodes, ...presetNodes];
+            activeId = presetNodes[0]?.id || activeId;
+            render();
+            exportJson();
+        };
         const selectNode = (id) => { applyNodeEditorChanges({ push: true }); activeId = id; render(); };
         const renderTableEditor = (node) => {
             if (!node || node.type !== 'table') {
@@ -585,7 +596,7 @@
         document.addEventListener('mousedown', (event) => {
             if (!nodeEditor.contains(event.target) && !isComposing) applyNodeEditorChanges({ push: true });
         }, true);
-        document.getElementById('import-template').onclick = () => insertPreset(document.getElementById('template-select').value || 'list');
+        document.getElementById('import-template').onclick = () => insertPreset(document.getElementById('template-select').value || 'list', document.getElementById('template-import-mode').value || 'replace');
         document.getElementById('undo').onclick = undo;
         document.getElementById('redo').onclick = redo;
         document.getElementById('duplicate-node').onclick = copyNode;
@@ -603,6 +614,12 @@
         document.getElementById('zoom-reset').onclick = () => { zoom = fitCanvasZoom(); applyZoom(); };
         window.addEventListener('resize', () => { zoom = fitCanvasZoom(); applyZoom(); });
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
+        document.getElementById('pageType').addEventListener('change', (event) => {
+            const value = event.target.value;
+            const map = { list: 'list', dashboard: 'dashboard', form: 'form', detail: 'detail' };
+            const templateSelect = document.getElementById('template-select');
+            if (map[value]) templateSelect.value = map[value];
+        });
         const componentButtons = [];
         COMPONENT_GROUPS.forEach((group, groupIndex) => {
             const details = document.createElement('details');
