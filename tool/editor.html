@@ -177,9 +177,10 @@
             return { x: centerX + offset, y: centerY + offset };
         };
         const addNode = (type) => {
+            console.log('[figma-drawer] addNode', type);
             pushHistory();
             const meta = NODE_TYPE_META[type] || { label: '组件', defaultWidth: 160, defaultHeight: 60, defaultText: '组件内容' };
-            const parentId = resolveParentId(nodes, activeId, 'root');
+            const parentId = 'root';
             const pos = computeInsertPosition(meta);
             const node = createNode({
                 id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -193,10 +194,11 @@
                 width: meta.defaultWidth,
                 height: meta.defaultHeight,
             });
-            nodes.push(node);
+            nodes = [...nodes, node];
             activeId = node.id;
             render();
             exportJson();
+            return node;
         };
         const insertPreset = (key) => { pushHistory(); nodes = [...nodes, ...buildTemplateNodes(key)]; render(); exportJson(); };
         const selectNode = (id) => { activeId = id; render(); };
@@ -384,7 +386,17 @@
             componentButtons.push(btn);
             componentList.appendChild(btn);
         });
-        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, componentButtons };
+        window.__FIGMA_DRAWER_DEBUG__ = {
+            addNode,
+            getNodes: () => nodes,
+            componentButtons,
+            clickType: (type) => {
+                const btn = componentButtons.find((item) => item.dataset.type === type);
+                if (!btn) { throw new Error(`button not found: ${type}`); }
+                btn.click();
+                return nodes;
+            }
+        };
         applyZoom(); exportJson(); render();
     </script>
 </body>
