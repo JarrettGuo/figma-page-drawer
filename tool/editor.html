@@ -137,6 +137,7 @@
         let dragState = null;
         let inlineEditor = null;
         let activeTableCell = null;
+        let activeTableEditorField = null;
         let zoom = 1;
         let guides = { x: null, y: null };
         let isSyncingEditor = false;
@@ -290,6 +291,11 @@
             if (!node || node.type !== 'table') {
                 tableEditor.style.display = 'none';
                 tableEditor.innerHTML = '';
+                activeTableEditorField = null;
+                return;
+            }
+            if (activeTableEditorField && tableEditor.contains(document.activeElement)) {
+                tableEditor.style.display = 'block';
                 return;
             }
             const table = normalizeTableConfig(node.tableConfig);
@@ -307,15 +313,16 @@
             table.columns.forEach((column, colIndex) => {
                 const input = document.createElement('input');
                 input.value = column;
+                input.addEventListener('focus', () => { activeTableEditorField = `header-${colIndex}`; });
+                input.addEventListener('blur', () => { activeTableEditorField = null; render(); });
                 input.addEventListener('input', () => {
                     const index = nodes.findIndex((item) => item.id === node.id);
                     if (index < 0) return;
                     const current = nodes[index];
                     const currentTable = normalizeTableConfig(current.tableConfig);
-                    const columns = currentTable.columns.map((item, idx) => idx === colIndex ? input.value.trim() || `列${idx + 1}` : item);
-                    nodes[index] = { ...current, text: columns.join(' ｜ '), tableConfig: { columns, rows: currentTable.rows } };
+                    const columns = currentTable.columns.map((item, idx) => idx === colIndex ? input.value : item);
+                    nodes[index] = { ...current, text: columns.map((item, idx) => item.trim() || `列${idx + 1}`).join(' ｜ '), tableConfig: { columns, rows: currentTable.rows } };
                     nodes = [...nodes];
-                    render();
                     exportJson();
                 });
                 headerRow.appendChild(input);
@@ -338,12 +345,13 @@
                     const input = document.createElement('input');
                     input.value = value;
                     input.placeholder = `${table.columns[colIndex] || `列${colIndex + 1}`}`;
+                    input.addEventListener('focus', () => { activeTableEditorField = `cell-${rowIndex}-${colIndex}`; });
+                    input.addEventListener('blur', () => { activeTableEditorField = null; render(); });
                     input.addEventListener('input', () => {
                         const index = nodes.findIndex((item) => item.id === node.id);
                         if (index < 0) return;
                         nodes[index] = updateTableCell(nodes[index], rowIndex, colIndex, input.value);
                         nodes = [...nodes];
-                        render();
                         exportJson();
                     });
                     rowEl.appendChild(input);
