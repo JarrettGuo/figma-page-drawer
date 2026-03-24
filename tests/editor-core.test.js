@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendTableColumn, appendTableRow, buildTemplateNodes, buildUnifiedJson, constrainNode, createNode, DEFAULT_CANVAS, isPaginationInsideTable, normalizeTableConfig, PRESET_TEMPLATES, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
+import { appendTableColumn, appendTableRow, buildTemplateNodes, buildUnifiedJson, constrainNode, containsRect, createNode, DEFAULT_CANVAS, inferParentId, isPaginationInsideTable, normalizeTableConfig, PRESET_TEMPLATES, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
 
 describe('editor-core', () => {
     it('creates node with defaults', () => {
@@ -82,5 +82,12 @@ describe('editor-core', () => {
         expect(buildTemplateNodes('dashboard').length).toBeGreaterThan(0);
         expect(buildTemplateNodes('form').length).toBeGreaterThan(0);
         expect(buildTemplateNodes('detail').length).toBeGreaterThan(0);
+    });
+
+    it('infers parent when a small card is inside a larger card', () => {
+        const parent = createNode({ id: 'card_parent', type: 'card', x: 100, y: 100, width: 400, height: 300 });
+        const child = createNode({ id: 'input_child', type: 'input', x: 140, y: 160, width: 200, height: 44, parentId: 'root' });
+        expect(containsRect(parent, child)).toBe(true);
+        expect(inferParentId([parent, child], child)).toBe('card_parent');
     });
 });

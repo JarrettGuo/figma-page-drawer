@@ -255,13 +255,34 @@ export function isPaginationInsideTable(tableNode, paginationNode) {
     return inside || nearBottomRight;
 }
 
+
+export function containsRect(parent, child, padding = 12) {
+    if (!parent || !child) return false;
+    return child.x >= parent.x + padding
+        && child.y >= parent.y + padding
+        && child.x + child.width <= parent.x + parent.width - padding
+        && child.y + child.height <= parent.y + parent.height - padding;
+}
+
+export function inferParentId(nodes, node) {
+    const containers = nodes
+        .filter((item) => item.id !== node.id && ['card', 'modal', 'table', 'sidebar'].includes(item.type))
+        .filter((item) => containsRect(item, node))
+        .sort((a, b) => (a.width * a.height) - (b.width * b.height));
+    return containers[0]?.id || node.parentId || 'root';
+}
+
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
     const normalizedNodes = nodes.map((node) => ({ ...node }));
     const tables = normalizedNodes.filter((node) => node.type === 'table');
     const paginations = normalizedNodes.filter((node) => node.type === 'pagination');
+    normalizedNodes.forEach((node) => {
+        if (node.type !== 'pagination') node.parentId = inferParentId(normalizedNodes, node);
+    });
     paginations.forEach((pagination) => {
         const owner = tables.find((table) => isPaginationInsideTable(table, pagination));
         if (owner) pagination.parentId = owner.id;
+        else pagination.parentId = inferParentId(normalizedNodes, pagination);
     });
     return {
         meta: { version: '1.0', source: 'visual-editor', description: `${form.pageName || '未命名页面'} unified json` },

@@ -103,6 +103,12 @@
                 <label>Y<input id="nodeY" type="number" /></label>
                 <label>宽<input id="nodeWidth" type="number" /></label>
                 <label>高<input id="nodeHeight" type="number" /></label>
+                <div class="row" style="margin-bottom:10px;">
+                    <button id="bring-forward" type="button">前移</button>
+                    <button id="send-backward" type="button">后移</button>
+                    <button id="bring-front" type="button">置顶</button>
+                    <button id="send-back" type="button">置底</button>
+                </div>
                 <button id="update-node">更新节点</button>
                 <div id="table-actions" class="row" style="display:none; margin-bottom:10px; flex-wrap:wrap;">
                     <button id="add-row" type="button">增行</button>
@@ -188,7 +194,7 @@
         const render = () => {
             closeInlineEditor();
             canvas.innerHTML = '';
-            const ordered = [...nodes].sort((a, b) => getDepth(a) - getDepth(b));
+            const ordered = [...nodes];
             ordered.forEach((rawNode) => {
                 const node = constrainNode(rawNode, DEFAULT_CANVAS);
                 const meta = NODE_TYPE_META[node.type] || { color: '#E5E7EB' };
@@ -200,7 +206,7 @@
                 el.style.width = `${node.width}px`;
                 el.style.height = `${node.height}px`;
                 el.style.background = meta.color;
-                el.style.zIndex = String(10 + depth);
+                el.style.zIndex = String(10 + ordered.findIndex((item) => item.id === node.id) + depth * 100);
                 el.dataset.id = node.id;
                 const titleEl = document.createElement('div');
                 titleEl.className = 'node-title';
@@ -420,6 +426,21 @@
             exportJson();
         };
 
+        const moveLayer = (mode) => {
+            const index = nodes.findIndex((item) => item.id === activeId);
+            if (index < 0) return;
+            pushHistory();
+            const next = [...nodes];
+            const [item] = next.splice(index, 1);
+            if (mode === 'forward') next.splice(Math.min(index + 1, next.length), 0, item);
+            if (mode === 'backward') next.splice(Math.max(index - 1, 0), 0, item);
+            if (mode === 'front') next.push(item);
+            if (mode === 'back') next.unshift(item);
+            nodes = next;
+            render();
+            exportJson();
+        };
+
         const deleteNode = () => {
             if (!activeId) return;
             pushHistory();
@@ -603,6 +624,10 @@
         document.getElementById('redo').onclick = redo;
         document.getElementById('duplicate-node').onclick = copyNode;
         document.getElementById('update-node').onclick = updateNode;
+        document.getElementById('bring-forward').onclick = () => moveLayer('forward');
+        document.getElementById('send-backward').onclick = () => moveLayer('backward');
+        document.getElementById('bring-front').onclick = () => moveLayer('front');
+        document.getElementById('send-back').onclick = () => moveLayer('back');
         document.getElementById('delete-node').onclick = deleteNode;
         document.getElementById('add-row').onclick = () => mutateActiveTable((node) => appendTableRow(node));
         document.getElementById('remove-row').onclick = () => mutateActiveTable((node) => removeTableRow(node));
