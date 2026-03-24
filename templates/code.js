@@ -6,99 +6,112 @@ async function main() {
         await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 
         const page = figma.currentPage;
-        const oldNodes = page.children.slice();
-        for (const node of oldNodes) {
-            node.remove();
-        }
+        for (const node of page.children.slice()) node.remove();
 
-        const frame = figma.createFrame();
-        frame.name = '订单工作台-优化版';
-        frame.resize(1440, 1024);
-        frame.fills = [{ type: 'SOLID', color: hexToRgb('#F7F8FA') }];
-        frame.layoutMode = 'VERTICAL';
-        frame.paddingTop = 24;
-        frame.paddingBottom = 24;
-        frame.paddingLeft = 24;
-        frame.paddingRight = 24;
-        frame.itemSpacing = 16;
-        page.appendChild(frame);
+        const root = createFrame({ name: '审批流列表页面', x: 0, y: 0, width: 1440, height: 900, fill: '#F5F7FA' });
+        page.appendChild(root);
 
-        const title = figma.createText();
-        title.characters = '订单工作台-优化版';
-        title.fontName = { family: 'Inter', style: 'Bold' };
-        title.fontSize = 28;
-        title.fills = [{ type: 'SOLID', color: hexToRgb('#111827') }];
-        frame.appendChild(title);
+        const sidebar = createFrame({ name: '侧边栏', x: 0, y: 0, width: 220, height: 900, fill: '#1F2937' });
+        root.appendChild(sidebar);
+        addText(sidebar, { text: 'LOGO
+菜单导航', x: 24, y: 24, fontSize: 24, fontStyle: 'Bold', color: '#FFFFFF' });
+        addText(sidebar, { text: '菜单导航', x: 24, y: 70, fontSize: 14, fontStyle: 'Medium', color: '#9CA3AF' });
 
-        const cardsRow = figma.createFrame();
-        cardsRow.name = 'StatsRow';
-        cardsRow.layoutMode = 'HORIZONTAL';
-        cardsRow.itemSpacing = 16;
-        cardsRow.fills = [];
-        frame.appendChild(cardsRow);
+        
 
-        for (let i = 0; i < 3; i += 1) {
-            const card = figma.createFrame();
-            card.name = 'StatCard-' + (i + 1);
-            card.resize(320, 120);
-            card.cornerRadius = 12;
-            card.fills = [{ type: 'SOLID', color: hexToRgb('#FFFFFF') }];
-            card.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: 0.06 }, offset: { x: 0, y: 4 }, radius: 12, spread: 0, visible: true, blendMode: 'NORMAL' }];
-            card.layoutMode = 'VERTICAL';
-            card.paddingTop = 16;
-            card.paddingBottom = 16;
-            card.paddingLeft = 16;
-            card.paddingRight = 16;
-            card.itemSpacing = 8;
-            cardsRow.appendChild(card);
+        const main = createFrame({ name: '主内容区', x: 220, y: 0, width: 1220, height: 900, fill: '#F5F7FA' });
+        root.appendChild(main);
+        addText(main, { text: '首页 / 系统配置 / 审批流配置', x: 40, y: 28, fontSize: 12, fontStyle: 'Regular', color: '#8C8C8C' });
+        addText(main, { text: '审批流配置', x: 40, y: 56, fontSize: 28, fontStyle: 'Bold', color: '#1F1F1F' });
 
-            const label = figma.createText();
-            label.characters = '指标 ' + (i + 1);
-            label.fontName = { family: 'Inter', style: 'Regular' };
-            label.fontSize = 14;
-            label.fills = [{ type: 'SOLID', color: hexToRgb('#6B7280') }];
-            card.appendChild(label);
+        main.appendChild(createButton({ text: '+ 新建', x: 930, y: 52, width: 100, height: 40, fill: '#1677FF', textColor: '#FFFFFF' }));
+        main.appendChild(createButton({ text: '刷新', x: 1046, y: 52, width: 80, height: 40, fill: '#FFFFFF', textColor: '#1677FF', stroke: '#1677FF' }));
 
-            const value = figma.createText();
-            value.characters = '128,000';
-            value.fontName = { family: 'Inter', style: 'Bold' };
-            value.fontSize = 24;
-            value.fills = [{ type: 'SOLID', color: hexToRgb('#DC2626') }];
-            card.appendChild(value);
-        }
+        const filterCard = createFrame({ name: '筛选区', x: 40, y: 116, width: 1140, height: 88, fill: '#FFFFFF', stroke: '#E5E7EB', radius: 12 });
+        main.appendChild(filterCard);
+        filterCard.appendChild(createInput({ placeholder: 'flow_type搜索', x: 24, y: 20, width: 152, height: 40 }));
+        filterCard.appendChild(createInput({ placeholder: 'system_name搜索', x: 216, y: 20, width: 152, height: 40 }));
+        filterCard.appendChild(createButton({ text: '查询', x: 920, y: 20, width: 88, height: 40, fill: '#1677FF', textColor: '#FFFFFF' }));
+        filterCard.appendChild(createButton({ text: '重制', x: 1020, y: 20, width: 88, height: 40, fill: '#FFFFFF', textColor: '#1F1F1F', stroke: '#D9D9D9' }));
 
-        const table = figma.createFrame();
-        table.name = 'TableCard';
-        table.resize(1200, 420);
-        table.cornerRadius = 12;
-        table.fills = [{ type: 'SOLID', color: hexToRgb('#FFFFFF') }];
-        table.layoutMode = 'VERTICAL';
-        table.paddingTop = 16;
-        table.paddingBottom = 16;
-        table.paddingLeft = 16;
-        table.paddingRight = 16;
-        table.itemSpacing = 12;
-        frame.appendChild(table);
+        const tableCard = createFrame({ name: '表格区', x: 40, y: 228, width: 1140, height: 560, fill: '#FFFFFF', stroke: '#E5E7EB', radius: 12 });
+        main.appendChild(tableCard);
+        tableCard.appendChild(createFrame({ name: '表头背景', x: 0, y: 0, width: 1140, height: 52, fill: '#FAFAFA' }));
 
-        const header = figma.createText();
-        header.characters = '数据列表';
-        header.fontName = { family: 'Inter', style: 'Semi Bold' };
-        header.fontSize = 18;
-        header.fills = [{ type: 'SOLID', color: hexToRgb('#111827') }];
-        table.appendChild(header);
+        addText(tableCard, { text: 'flow_type', x: 24, y: 17, fontSize: 14, fontStyle: 'Semi Bold', color: '#1F1F1F' });
+        addText(tableCard, { text: 'system_name', x: 220, y: 17, fontSize: 14, fontStyle: 'Semi Bold', color: '#1F1F1F' });
+        addText(tableCard, { text: 'status', x: 470, y: 17, fontSize: 14, fontStyle: 'Semi Bold', color: '#1F1F1F' });
+        addText(tableCard, { text: 'approval_id', x: 620, y: 17, fontSize: 14, fontStyle: 'Semi Bold', color: '#1F1F1F' });
+        addText(tableCard, { text: '操作', x: 930, y: 17, fontSize: 14, fontStyle: 'Semi Bold', color: '#1F1F1F' });
 
-        const columns = figma.createText();
-        columns.characters = "订单号 / 状态 / 创建时间";
-        columns.fontName = { family: 'Inter', style: 'Medium' };
-        columns.fontSize = 14;
-        columns.fills = [{ type: 'SOLID', color: hexToRgb('#374151') }];
-        table.appendChild(columns);
+        const empty = createFrame({ name: '空态区域', x: 24, y: 84, width: 1092, height: 360, fill: '#FAFAFA', stroke: '#F0F0F0', radius: 12 });
+        tableCard.appendChild(empty);
+        addText(empty, { text: '暂无列表数据', x: 482, y: 132, fontSize: 18, fontStyle: 'Semi Bold', color: '#8C8C8C' });
+        addText(empty, { text: '结构以 unified json 为准，当前未提供真实表格行数据', x: 352, y: 168, fontSize: 13, fontStyle: 'Regular', color: '#B0B0B0' });
+        addText(empty, { text: 'flow_type ｜ system_name ｜ status ｜ approval_id ｜ 操作（详情、编辑、删除）', x: 196, y: 210, fontSize: 13, fontStyle: 'Regular', color: '#595959' });
 
-        figma.viewport.scrollAndZoomIntoView([frame]);
-        figma.notify('Page generated', { timeout: 3000 });
+        const pagination = createFrame({ name: '分页', x: 890, y: 804, width: 290, height: 32, fill: '#F5F7FA' });
+        main.appendChild(pagination);
+        addText(pagination, { text: '上一页 1 2 3 下一页 （20条每页）', x: 0, y: 8, fontSize: 12, fontStyle: 'Regular', color: '#595959' });
+
+        figma.viewport.scrollAndZoomIntoView([root]);
+        figma.notify('审批流列表页面已生成', { timeout: 3000 });
     } catch (error) {
         figma.notify('ERROR: ' + error.message, { timeout: 10000 });
     }
+}
+
+function createFrame({ name, x, y, width, height, fill = '#FFFFFF', stroke = null, radius = 0 }) {
+    const frame = figma.createFrame();
+    frame.name = name;
+    frame.x = x;
+    frame.y = y;
+    frame.resize(width, height);
+    frame.fills = [{ type: 'SOLID', color: hexToRgb(fill) }];
+    if (stroke) {
+        frame.strokes = [{ type: 'SOLID', color: hexToRgb(stroke) }];
+        frame.strokeWeight = 1;
+    }
+    if (radius) frame.cornerRadius = radius;
+    return frame;
+}
+
+function createButton({ text, x, y, width, height, fill, textColor, stroke = null }) {
+    const button = createFrame({ name: text, x, y, width, height, fill, stroke, radius: 8 });
+    const label = figma.createText();
+    label.characters = text;
+    label.fontName = { family: 'Inter', style: 'Medium' };
+    label.fontSize = 14;
+    label.fills = [{ type: 'SOLID', color: hexToRgb(textColor) }];
+    button.appendChild(label);
+    label.x = (width - label.width) / 2;
+    label.y = (height - label.height) / 2;
+    return button;
+}
+
+function createInput({ placeholder, x, y, width, height }) {
+    const input = createFrame({ name: placeholder, x, y, width, height, fill: '#FFFFFF', stroke: '#D9D9D9', radius: 8 });
+    const text = figma.createText();
+    text.characters = placeholder;
+    text.fontName = { family: 'Inter', style: 'Regular' };
+    text.fontSize = 14;
+    text.fills = [{ type: 'SOLID', color: hexToRgb('#BFBFBF') }];
+    text.x = 12;
+    text.y = 11;
+    input.appendChild(text);
+    return input;
+}
+
+function addText(parent, { text, x, y, fontSize = 14, fontStyle = 'Regular', color = '#111827' }) {
+    const node = figma.createText();
+    node.characters = text;
+    node.fontName = { family: 'Inter', style: fontStyle };
+    node.fontSize = fontSize;
+    node.fills = [{ type: 'SOLID', color: hexToRgb(color) }];
+    node.x = x;
+    node.y = y;
+    parent.appendChild(node);
+    return node;
 }
 
 function hexToRgb(hex) {

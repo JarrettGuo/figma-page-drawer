@@ -7,7 +7,8 @@
         "build:dashboard": "node scripts/build-page-plugin.js --type dashboard",
         "build:list": "node scripts/build-page-plugin.js --type list",
         "build:update": "node scripts/update-page-plugin.js",
-        "test": "vitest run"
+        "test": "vitest run",
+        "build:unified": "node scripts/build-from-unified.js --input examples/approval-flow-list-unified.clean.json"
     },
     "devDependencies": {
         "@types/node": "^25.5.0",
