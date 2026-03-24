@@ -68,7 +68,7 @@
         <main class="canvas-wrap">
             <div class="canvas-shell">
                 <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
-                <div class="hint">右侧节点表单失焦后会自动提交并同步到中间展示区。</div>
+                <div class="hint">选中中间组件后，可用方向键移动；Shift + 方向键可加大步长。</div>
                 <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
             </div>
         </main>
@@ -101,7 +101,7 @@
         import * as Core from './editor-core.js';
         window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
         window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
-        const { DEFAULT_CANVAS, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
+        const { DEFAULT_CANVAS, GRID_SIZE, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } = Core;
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
@@ -191,10 +191,19 @@
         const getFormData = () => normalizeFormInput(getFormRaw());
         const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: DEFAULT_CANVAS }); };
         const computeInsertPosition = (meta) => {
-            const centerX = Math.max(24, Math.round((DEFAULT_CANVAS.width - (meta.defaultWidth || 160)) / 2 / 8) * 8);
-            const centerY = Math.max(24, Math.round((DEFAULT_CANVAS.height - (meta.defaultHeight || 60)) / 2 / 8) * 8);
+            const centerX = Math.max(24, Math.round((DEFAULT_CANVAS.width - (meta.defaultWidth || 160)) / 2 / GRID_SIZE) * GRID_SIZE);
+            const centerY = Math.max(24, Math.round((DEFAULT_CANVAS.height - (meta.defaultHeight || 60)) / 2 / GRID_SIZE) * GRID_SIZE);
             const offset = Math.min(nodes.length, 6) * 16;
             return { x: centerX + offset, y: centerY + offset };
+        };
+        const moveActiveNodeByKeyboard = (deltaX, deltaY) => {
+            const index = nodes.findIndex((item) => item.id === activeId);
+            if (index < 0) return;
+            pushHistory();
+            nodes[index] = updateNodePosition(nodes[index], deltaX, deltaY, null, DEFAULT_CANVAS);
+            nodes = [...nodes];
+            render();
+            exportJson();
         };
         const applyNodeEditorChanges = ({ push = false } = {}) => {
             if (isSyncingEditor) return;
@@ -356,10 +365,18 @@
         window.addEventListener('mouseup', () => { if (dragState) exportJson(); guides = { x: null, y: null }; dragState = null; render(); });
         window.addEventListener('keydown', (event) => {
             if (inlineEditor) return;
-            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); copyNode(); }
-            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) { event.preventDefault(); undo(); }
-            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redo(); }
-            if (event.key === 'Delete') deleteNode();
+            const target = event.target;
+            const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); copyNode(); return; }
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) { event.preventDefault(); undo(); return; }
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redo(); return; }
+            if (event.key === 'Delete' && !isTyping) { deleteNode(); return; }
+            if (!activeId || isTyping) return;
+            const step = event.shiftKey ? GRID_SIZE * 4 : GRID_SIZE;
+            if (event.key === 'ArrowUp') { event.preventDefault(); moveActiveNodeByKeyboard(0, -step); }
+            if (event.key === 'ArrowDown') { event.preventDefault(); moveActiveNodeByKeyboard(0, step); }
+            if (event.key === 'ArrowLeft') { event.preventDefault(); moveActiveNodeByKeyboard(-step, 0); }
+            if (event.key === 'ArrowRight') { event.preventDefault(); moveActiveNodeByKeyboard(step, 0); }
         });
         nodeEditorIds.forEach((id) => {
             const el = document.getElementById(id);
