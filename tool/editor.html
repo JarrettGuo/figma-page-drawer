@@ -27,6 +27,8 @@
         .guide-y { height: 1px; left: 0; right: 0; }
         .node { position: absolute; border: 1px dashed #6b7280; padding: 8px; cursor: move; overflow: hidden; user-select: none; border-radius: 10px; }
         .node.active { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
+        .node.multi-active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12); }
+        .marquee { position: absolute; border: 1px dashed #1677ff; background: rgba(22,119,255,0.08); pointer-events: none; z-index: 9999; }
         .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
         .node-level { font-size: 11px; color: #6b7280; font-weight: 500; }
         .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; }
@@ -94,6 +96,7 @@
             <h1>节点编辑 / 导入导出</h1>
             <div class="hint">快捷键：Delete 删除；Ctrl/Cmd+D 复制；Ctrl/Cmd+Z 撤销；Ctrl/Cmd+Shift+Z 重做。</div>
             <div id="node-editor">
+                <div id="selection-summary" class="hint">未选中节点</div>
                 <label>父节点 ID<input id="nodeParentId" /></label>
                 <label>节点类型<input id="nodeType" /></label>
                 <label>节点标题<input id="nodeTitle" /></label>
@@ -145,7 +148,9 @@
         ];
         let nodes = [];
         let activeId = null;
+        let selectedIds = [];
         let dragState = null;
+        let marqueeState = null;
         let inlineEditor = null;
         let activeTableCell = null;
         let activeTableEditorField = null;
@@ -164,11 +169,12 @@
             const heightRatio = (container.height - 24) / DEFAULT_CANVAS.height;
             return Math.max(0.5, Math.min(1, Number(Math.min(widthRatio, heightRatio).toFixed(2))));
         };
-        const snapshot = () => ({ nodes: JSON.parse(JSON.stringify(nodes)), form: getFormRaw(), activeId, zoom });
+        const snapshot = () => ({ nodes: JSON.parse(JSON.stringify(nodes)), form: getFormRaw(), activeId, selectedIds: [...selectedIds], zoom });
         const pushHistory = () => { history.push(snapshot()); if (history.length > 50) history.shift(); future.length = 0; syncHistoryButtons(); };
         const restore = (state) => {
             nodes = state.nodes || [];
             activeId = state.activeId || null;
+            selectedIds = Array.isArray(state.selectedIds) ? [...state.selectedIds] : (activeId ? [activeId] : []);
             zoom = state.zoom || fitCanvasZoom();
             Object.entries(state.form || {}).forEach(([key, value]) => { const el = document.getElementById(key); if (el) el.value = value; });
             applyZoom(); render(); exportJson(); syncHistoryButtons();
@@ -197,7 +203,9 @@
                 const meta = NODE_TYPE_META[node.type] || { color: '#E5E7EB' };
                 const depth = getDepth(node);
                 const el = document.createElement('div');
-                el.className = `node${node.id === activeId ? ' active' : ''}`;
+                const isActive = node.id === activeId;
+                const isMultiActive = selectedIds.includes(node.id);
+                el.className = `node${isActive ? ' active' : ''}${isMultiActive && !isActive ? ' multi-active' : ''}`;
                 el.style.left = `${node.x}px`;
                 el.style.top = `${node.y}px`;
                 el.style.width = `${node.width}px`;
@@ -239,18 +247,41 @@
                     el.appendChild(grid);
                 }
                 el.addEventListener('mousedown', (event) => startDrag(event, node.id, 'move'));
-                el.addEventListener('click', () => selectNode(node.id));
+                el.addEventListener('click', (event) => selectNode(node.id, { toggle: event.shiftKey }));
                 const resizeHandle = document.createElement('div');
                 resizeHandle.className = 'resize-handle';
                 resizeHandle.addEventListener('mousedown', (event) => startDrag(event, node.id, 'resize'));
                 el.appendChild(resizeHandle);
                 canvas.appendChild(el);
             });
+            if (marqueeState) { const box = document.createElement('div'); box.className = 'marquee'; box.style.left = `${marqueeState.left}px`; box.style.top = `${marqueeState.top}px`; box.style.width = `${marqueeState.width}px`; box.style.height = `${marqueeState.height}px`; canvas.appendChild(box); }
             renderGuides(); syncNodeEditor(); renderTree();
         };
         const getFormRaw = () => Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value]));
         const getFormData = () => normalizeFormInput(getFormRaw());
         const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: DEFAULT_CANVAS }); };
+        const ensureSelection = (id) => {
+            if (!id) return;
+            activeId = id;
+            if (!selectedIds.includes(id)) selectedIds = [id];
+        };
+        const toggleSelection = (id) => {
+            if (!id) return;
+            if (selectedIds.includes(id)) {
+                selectedIds = selectedIds.filter((item) => item !== id);
+                activeId = selectedIds[selectedIds.length - 1] || null;
+            } else {
+                selectedIds = [...selectedIds, id];
+                activeId = id;
+            }
+            render();
+        };
+        const applyZIndexToSelection = (zValue) => {
+            const ids = selectedIds.length ? selectedIds : (activeId ? [activeId] : []);
+            if (!ids.length) return;
+            nodes = nodes.map((node) => ids.includes(node.id) ? { ...node, zIndex: zValue } : node);
+        };
+
         const computeInsertPosition = (meta) => {
             const centerX = Math.max(24, Math.round((DEFAULT_CANVAS.width - (meta.defaultWidth || 160)) / 2 / GRID_SIZE) * GRID_SIZE);
             const centerY = Math.max(24, Math.round((DEFAULT_CANVAS.height - (meta.defaultHeight || 60)) / 2 / GRID_SIZE) * GRID_SIZE);
@@ -258,11 +289,10 @@
             return { x: centerX + offset, y: centerY + offset };
         };
         const moveActiveNodeByKeyboard = (deltaX, deltaY) => {
-            const index = nodes.findIndex((item) => item.id === activeId);
-            if (index < 0) return;
+            const ids = selectedIds.length ? selectedIds : (activeId ? [activeId] : []);
+            if (!ids.length) return;
             pushHistory();
-            nodes[index] = updateNodePosition(nodes[index], deltaX, deltaY, null, DEFAULT_CANVAS);
-            nodes = [...nodes];
+            nodes = nodes.map((node) => ids.includes(node.id) ? updateNodePosition(node, deltaX, deltaY, null, DEFAULT_CANVAS) : node);
             render();
             exportJson();
         };
@@ -271,6 +301,7 @@
             const index = nodes.findIndex((item) => item.id === targetId);
             if (index < 0) return;
             const current = nodes[index];
+            const zValue = Number((document.getElementById('nodeZIndex').value ?? '').trim() || 0);
             const next = constrainNode({
                 ...current,
                 parentId: document.getElementById('nodeParentId').value || 'root',
@@ -280,7 +311,7 @@
                 text: document.getElementById('nodeText').value,
                 x: softSnap(document.getElementById('nodeX').value),
                 y: softSnap(document.getElementById('nodeY').value),
-                zIndex: Number((document.getElementById('nodeZIndex').value ?? '').trim() || 0),
+                zIndex: zValue,
                 width: Math.max(24, softSnap(document.getElementById('nodeWidth').value)),
                 height: Math.max(24, softSnap(document.getElementById('nodeHeight').value)),
                 ...(current.type === 'table' ? { tableConfig: normalizeTableConfig(current.tableConfig) } : {}),
@@ -289,6 +320,7 @@
             if (!changed) return;
             if (push) pushHistory();
             nodes = nodes.map((item, itemIndex) => (itemIndex === index ? next : item));
+            if (selectedIds.length > 1 && selectedIds.includes(targetId)) applyZIndexToSelection(zValue);
             if (activeId === targetId) activeId = next.id;
             render();
             exportJson();
@@ -300,6 +332,7 @@
             const node = constrainNode(createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId: 'root', name: meta.label, title: meta.label, text: meta.defaultText, x: pos.x, y: pos.y, width: meta.defaultWidth, height: meta.defaultHeight }), DEFAULT_CANVAS);
             nodes = [...nodes, node];
             activeId = node.id;
+            selectedIds = [node.id];
             render();
             exportJson();
             return node;
@@ -309,10 +342,17 @@
             const presetNodes = buildTemplateNodes(key).map((node) => constrainNode(node, DEFAULT_CANVAS));
             nodes = mode === 'replace' ? presetNodes : [...nodes, ...presetNodes];
             activeId = presetNodes[0]?.id || activeId;
+            selectedIds = activeId ? [activeId] : [];
             render();
             exportJson();
         };
-        const selectNode = (id) => { applyNodeEditorChanges({ push: true }); activeId = id; render(); };
+        const selectNode = (id, options = {}) => {
+            applyNodeEditorChanges({ push: true });
+            if (options.toggle) { toggleSelection(id); return; }
+            activeId = id;
+            selectedIds = id ? [id] : [];
+            render();
+        };
         const renderTableEditor = (node) => {
             if (!node || node.type !== 'table') {
                 tableEditor.style.display = 'none';
@@ -345,6 +385,7 @@
                     const index = nodes.findIndex((item) => item.id === node.id);
                     if (index < 0) return;
                     const current = nodes[index];
+            const zValue = Number((document.getElementById('nodeZIndex').value ?? '').trim() || 0);
                     const currentTable = normalizeTableConfig(current.tableConfig);
                     const columns = currentTable.columns.map((item, idx) => idx === colIndex ? input.value : item);
                     nodes[index] = { ...current, text: columns.map((item, idx) => item.trim() || `列${idx + 1}`).join(' ｜ '), tableConfig: { columns, rows: currentTable.rows } };
@@ -389,7 +430,9 @@
 
         const syncNodeEditor = () => {
             const node = nodes.find((item) => item.id === activeId);
+            const selectionSummary = document.getElementById('selection-summary');
             isSyncingEditor = true;
+            selectionSummary.textContent = selectedIds.length > 1 ? `已选中 ${selectedIds.length} 个组件（可一起移动 / 删除 / 复制 / 改 Z轴）` : (node ? `当前节点：${node.title || node.name}` : '未选中节点');
             const fieldValues = node ? {
                 nodeParentId: node.parentId || 'root',
                 nodeType: node.type,
@@ -425,9 +468,10 @@
         };
 
         const deleteNode = () => {
-            if (!activeId) return;
+            const ids = selectedIds.length ? [...selectedIds] : (activeId ? [activeId] : []);
+            if (!ids.length) return;
             pushHistory();
-            const deleteIds = new Set([activeId]);
+            const deleteIds = new Set(ids);
             let changed = true;
             while (changed) {
                 changed = false;
@@ -437,10 +481,11 @@
             }
             nodes = nodes.filter((item) => !deleteIds.has(item.id));
             activeId = null;
+            selectedIds = [];
             render();
             exportJson();
         };
-        const copyNode = () => { const node = nodes.find((item) => item.id === activeId); if (!node) return; pushHistory(); const copied = constrainNode(duplicateNode(node), DEFAULT_CANVAS); nodes = [...nodes, copied]; activeId = copied.id; render(); exportJson(); };
+        const copyNode = () => { const ids = selectedIds.length ? selectedIds : (activeId ? [activeId] : []); const source = nodes.filter((item) => ids.includes(item.id)); if (!source.length) return; pushHistory(); const copies = source.map((node) => constrainNode(duplicateNode(node), DEFAULT_CANVAS)); nodes = [...nodes, ...copies]; selectedIds = copies.map((item) => item.id); activeId = copies[copies.length - 1]?.id || null; render(); exportJson(); };
         const undo = () => { const state = history.pop(); if (!state) return; future.push(snapshot()); restore(state); };
         const redo = () => { const state = future.pop(); if (!state) return; history.push(snapshot()); restore(state); };
         const importJson = () => {
@@ -453,6 +498,7 @@
                 document.getElementById('pageName').value = form.pageName || '未命名页面';
                 document.getElementById('notes').value = form.notes || '';
                 activeId = nodes[0]?.id || null;
+                selectedIds = activeId ? [activeId] : [];
                 render();
                 exportJson();
             } catch (error) {
@@ -466,8 +512,10 @@
             closeInlineEditor();
             const node = nodes.find((item) => item.id === id);
             if (!node) return;
-            activeId = id;
-            dragState = { id, mode, startX: event.clientX, startY: event.clientY, originX: node.x, originY: node.y, originWidth: node.width, originHeight: node.height };
+            if (event.shiftKey) { toggleSelection(id); return; }
+            ensureSelection(id);
+            const dragIds = selectedIds.includes(id) ? [...selectedIds] : [id];
+            dragState = { id, ids: dragIds, mode, startX: event.clientX, startY: event.clientY, origins: dragIds.map((dragId) => { const dragNode = nodes.find((item) => item.id === dragId); return { id: dragId, x: dragNode.x, y: dragNode.y, width: dragNode.width, height: dragNode.height }; }) };
             render();
         };
         const openInlineEditor = (event, id, field = 'text') => {
@@ -540,6 +588,7 @@
                 pushHistory();
                 if (rowIndex === -1) {
                     const current = nodes[index];
+            const zValue = Number((document.getElementById('nodeZIndex').value ?? '').trim() || 0);
                     const table = normalizeTableConfig(current.tableConfig);
                     const columns = table.columns.map((col, idx) => idx === colIndex ? String(value || '').trim() || `列${idx + 1}` : col);
                     nodes[index] = {
@@ -558,23 +607,52 @@
             exportJson();
         };
         window.addEventListener('mousemove', (event) => {
+            if (marqueeState && !dragState) {
+                const rect = canvas.getBoundingClientRect();
+                const currentX = (event.clientX - rect.left) / zoom;
+                const currentY = (event.clientY - rect.top) / zoom;
+                marqueeState.left = Math.min(marqueeState.startX, currentX);
+                marqueeState.top = Math.min(marqueeState.startY, currentY);
+                marqueeState.width = Math.abs(currentX - marqueeState.startX);
+                marqueeState.height = Math.abs(currentY - marqueeState.startY);
+                render();
+                return;
+            }
             if (!dragState) return;
-            const index = nodes.findIndex((item) => item.id === dragState.id);
-            if (index < 0) return;
             const deltaX = (event.clientX - dragState.startX) / zoom;
             const deltaY = (event.clientY - dragState.startY) / zoom;
             if (dragState.mode === 'move') {
-                const moved = updateNodePosition({ ...nodes[index], x: dragState.originX, y: dragState.originY }, deltaX, deltaY, null, DEFAULT_CANVAS);
+                const primary = dragState.origins.find((item) => item.id === dragState.id);
+                const primaryNode = nodes.find((item) => item.id === dragState.id);
+                const moved = updateNodePosition({ ...primaryNode, x: primary.x, y: primary.y }, deltaX, deltaY, null, DEFAULT_CANVAS);
                 guides = findAlignmentGuides(moved, nodes);
-                nodes[index] = updateNodePosition({ ...nodes[index], x: dragState.originX, y: dragState.originY }, deltaX, deltaY, guides, DEFAULT_CANVAS);
+                nodes = nodes.map((node) => {
+                    const origin = dragState.origins.find((item) => item.id === node.id);
+                    if (!origin) return node;
+                    return updateNodePosition({ ...node, x: origin.x, y: origin.y }, deltaX, deltaY, guides, DEFAULT_CANVAS);
+                });
             } else {
-                nodes[index] = updateNodeSize({ ...nodes[index], width: dragState.originWidth, height: dragState.originHeight }, deltaX, deltaY, DEFAULT_CANVAS);
+                const index = nodes.findIndex((item) => item.id === dragState.id);
+                const origin = dragState.origins.find((item) => item.id === dragState.id);
+                if (index < 0 || !origin) return;
+                nodes[index] = updateNodeSize({ ...nodes[index], width: origin.width, height: origin.height }, deltaX, deltaY, DEFAULT_CANVAS);
                 guides = { x: null, y: null };
             }
             nodes = [...nodes];
             render();
         });
-        window.addEventListener('mouseup', () => { if (dragState) exportJson(); guides = { x: null, y: null }; dragState = null; render(); });
+        window.addEventListener('mouseup', () => {
+            if (marqueeState) {
+                const left = marqueeState.left; const top = marqueeState.top; const right = left + marqueeState.width; const bottom = top + marqueeState.height;
+                const hits = nodes.filter((node) => node.x >= left && node.y >= top && node.x + node.width <= right && node.y + node.height <= bottom).map((node) => node.id);
+                if (hits.length) { selectedIds = Array.from(new Set([...selectedIds, ...hits])); activeId = selectedIds[selectedIds.length - 1] || null; }
+                marqueeState = null;
+            }
+            if (dragState) exportJson();
+            guides = { x: null, y: null };
+            dragState = null;
+            render();
+        });
         window.addEventListener('keydown', (event) => {
             if (inlineEditor) return;
             const target = event.target;
@@ -602,6 +680,12 @@
         document.addEventListener('mousedown', (event) => {
             if (!nodeEditor.contains(event.target) && !isComposing) applyNodeEditorChanges({ push: true });
         }, true);
+        canvas.addEventListener('mousedown', (event) => {
+            if (event.target !== canvas) return;
+            closeInlineEditor();
+            marqueeState = { startX: event.offsetX, startY: event.offsetY, left: event.offsetX, top: event.offsetY, width: 0, height: 0 };
+            if (!event.shiftKey) { activeId = null; selectedIds = []; render(); }
+        });
         document.getElementById('import-template').onclick = () => insertPreset(document.getElementById('template-select').value || 'list', document.getElementById('template-import-mode').value || 'replace');
         document.getElementById('undo').onclick = undo;
         document.getElementById('redo').onclick = redo;
@@ -648,7 +732,7 @@
             details.appendChild(body);
             componentList.appendChild(details);
         });
-        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, componentButtons, clickType: (type) => { const btn = componentButtons.find((item) => item.dataset.type === type); if (!btn) throw new Error(`button not found: ${type}`); btn.click(); return nodes; } };
+        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, getSelectedIds: () => [...selectedIds], componentButtons, clickType: (type) => { const btn = componentButtons.find((item) => item.dataset.type === type); if (!btn) throw new Error(`button not found: ${type}`); btn.click(); return nodes; } };
         zoom = fitCanvasZoom();
         applyZoom(); exportJson(); render(); syncHistoryButtons();
     </script>
