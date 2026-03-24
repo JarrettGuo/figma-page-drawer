@@ -68,7 +68,7 @@
         <main class="canvas-wrap">
             <div class="canvas-shell">
                 <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
-                <div class="hint">选中中间组件后，可用方向键移动；Shift + 方向键可加大步长。</div>
+                <div class="hint">支持中文输入法；组合输入完成前不会提前渲染拼音。</div>
                 <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
             </div>
         </main>
@@ -123,6 +123,7 @@
         let zoom = 1;
         let guides = { x: null, y: null };
         let isSyncingEditor = false;
+        let isComposing = false;
         const history = [];
         const future = [];
 
@@ -206,7 +207,7 @@
             exportJson();
         };
         const applyNodeEditorChanges = ({ push = false } = {}) => {
-            if (isSyncingEditor) return;
+            if (isSyncingEditor || isComposing) return;
             const index = nodes.findIndex((item) => item.id === activeId);
             if (index < 0) return;
             const current = nodes[index];
@@ -380,12 +381,14 @@
         });
         nodeEditorIds.forEach((id) => {
             const el = document.getElementById(id);
-            el.addEventListener('input', () => applyNodeEditorChanges());
-            el.addEventListener('change', () => applyNodeEditorChanges({ push: true }));
-            el.addEventListener('blur', () => applyNodeEditorChanges({ push: true }));
+            el.addEventListener('compositionstart', () => { isComposing = true; });
+            el.addEventListener('compositionend', () => { isComposing = false; applyNodeEditorChanges({ push: true }); });
+            el.addEventListener('input', () => { if (!isComposing) applyNodeEditorChanges(); });
+            el.addEventListener('change', () => { if (!isComposing) applyNodeEditorChanges({ push: true }); });
+            el.addEventListener('blur', () => { if (!isComposing) applyNodeEditorChanges({ push: true }); });
         });
         document.addEventListener('mousedown', (event) => {
-            if (!nodeEditor.contains(event.target)) applyNodeEditorChanges({ push: true });
+            if (!nodeEditor.contains(event.target) && !isComposing) applyNodeEditorChanges({ push: true });
         }, true);
         document.getElementById('preset-list').onclick = () => insertPreset('list');
         document.getElementById('undo').onclick = undo;
