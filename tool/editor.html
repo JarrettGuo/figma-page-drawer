@@ -124,6 +124,7 @@
         let guides = { x: null, y: null };
         let isSyncingEditor = false;
         let isComposing = false;
+        let activeEditorField = null;
         const history = [];
         const future = [];
 
@@ -247,18 +248,25 @@
         const syncNodeEditor = () => {
             const node = nodes.find((item) => item.id === activeId);
             isSyncingEditor = true;
-            nodeEditorIds.forEach((id) => { document.getElementById(id).value = ''; });
-            if (node) {
-                document.getElementById('nodeParentId').value = node.parentId || 'root';
-                document.getElementById('nodeType').value = node.type;
-                document.getElementById('nodeTitle').value = node.title || '';
-                document.getElementById('nodeName').value = node.name;
-                document.getElementById('nodeText').value = node.text || '';
-                document.getElementById('nodeX').value = node.x;
-                document.getElementById('nodeY').value = node.y;
-                document.getElementById('nodeWidth').value = node.width;
-                document.getElementById('nodeHeight').value = node.height;
-            }
+            const fieldValues = node ? {
+                nodeParentId: node.parentId || 'root',
+                nodeType: node.type,
+                nodeTitle: node.title || '',
+                nodeName: node.name,
+                nodeText: node.text || '',
+                nodeX: node.x,
+                nodeY: node.y,
+                nodeWidth: node.width,
+                nodeHeight: node.height,
+            } : {
+                nodeParentId: '', nodeType: '', nodeTitle: '', nodeName: '', nodeText: '', nodeX: '', nodeY: '', nodeWidth: '', nodeHeight: ''
+            };
+            nodeEditorIds.forEach((id) => {
+                const el = document.getElementById(id);
+                const isActiveField = document.activeElement === el || activeEditorField === id;
+                if (isActiveField) return;
+                el.value = fieldValues[id] ?? '';
+            });
             isSyncingEditor = false;
         };
         const updateNode = () => { applyNodeEditorChanges({ push: true }); };
@@ -381,11 +389,12 @@
         });
         nodeEditorIds.forEach((id) => {
             const el = document.getElementById(id);
-            el.addEventListener('compositionstart', () => { isComposing = true; });
-            el.addEventListener('compositionend', () => { isComposing = false; applyNodeEditorChanges({ push: true }); });
-            el.addEventListener('input', () => { if (!isComposing) applyNodeEditorChanges(); });
-            el.addEventListener('change', () => { if (!isComposing) applyNodeEditorChanges({ push: true }); });
-            el.addEventListener('blur', () => { if (!isComposing) applyNodeEditorChanges({ push: true }); });
+            el.addEventListener('focus', () => { activeEditorField = id; });
+            el.addEventListener('compositionstart', () => { isComposing = true; activeEditorField = id; });
+            el.addEventListener('compositionend', () => { isComposing = false; activeEditorField = id; applyNodeEditorChanges({ push: true }); });
+            el.addEventListener('input', () => { activeEditorField = id; if (!isComposing) applyNodeEditorChanges(); });
+            el.addEventListener('change', () => { activeEditorField = id; if (!isComposing) applyNodeEditorChanges({ push: true }); });
+            el.addEventListener('blur', () => { if (!isComposing) { applyNodeEditorChanges({ push: true }); activeEditorField = null; } });
         });
         document.addEventListener('mousedown', (event) => {
             if (!nodeEditor.contains(event.target) && !isComposing) applyNodeEditorChanges({ push: true });
