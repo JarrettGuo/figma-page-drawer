@@ -60,21 +60,18 @@
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
-                <div class="row">
-                    <select id="template-select">
+                <div class="row"><select id="template-select">
                         <option value="list">列表页模板（侧栏 + 筛选 + 表格）</option>
                         <option value="dashboard">Dashboard 模板（指标卡 + 表格）</option>
                         <option value="form">表单页模板（表单容器）</option>
                         <option value="detail">详情页模板（信息卡 + 日志）</option>
-                    </select>
-                    <select id="template-import-mode">
+                    </select></div>
+                <div class="row"><select id="template-import-mode">
                         <option value="replace">清空导入</option>
                         <option value="append">追加导入</option>
-                    </select>
-                    <button id="import-template">一键导入</button>
-                </div>
-                <div class="row"><button id="duplicate-node">复制选中</button></div>
-                <div class="row"><button id="undo">撤销</button><button id="redo">重做</button></div>
+                    </select></div>
+                <div class="row"><button id="import-template">一键导入</button></div>
+                <div class="row"><button id="duplicate-node">复制选中</button><button id="undo">撤销</button><button id="redo">重做</button></div>
             </div>
             <div class="section-block">
                 <h2>页面信息</h2>
@@ -167,15 +164,19 @@
             return Math.max(0.5, Math.min(1, Number(Math.min(widthRatio, heightRatio).toFixed(2))));
         };
         const snapshot = () => ({ nodes: JSON.parse(JSON.stringify(nodes)), form: getFormRaw(), activeId, zoom });
-        const pushHistory = () => { history.push(snapshot()); if (history.length > 50) history.shift(); future.length = 0; };
+        const pushHistory = () => { history.push(snapshot()); if (history.length > 50) history.shift(); future.length = 0; syncHistoryButtons(); };
         const restore = (state) => {
             nodes = state.nodes || [];
             activeId = state.activeId || null;
             zoom = state.zoom || fitCanvasZoom();
             Object.entries(state.form || {}).forEach(([key, value]) => { const el = document.getElementById(key); if (el) el.value = value; });
-            applyZoom(); render(); exportJson();
+            applyZoom(); render(); exportJson(); syncHistoryButtons();
         };
         const applyZoom = () => { canvasFrame.style.transform = `scale(${zoom})`; document.getElementById('zoom-reset').textContent = `${Math.round(zoom * 100)}%`; };
+        const syncHistoryButtons = () => {
+            document.getElementById('undo').disabled = history.length === 0;
+            document.getElementById('redo').disabled = future.length === 0;
+        };
         const getDepth = (node) => { let depth = 0; let parentId = node.parentId; while (parentId && parentId !== 'root') { const parent = nodes.find((item) => item.id === parentId); if (!parent) break; depth += 1; parentId = parent.parentId; } return depth; };
         const renderTree = () => { const lines = ['层级结构']; const walk = (parentId, depth) => { nodes.filter((item) => (item.parentId || 'root') === parentId).forEach((node) => { lines.push(`${'  '.repeat(depth)}- ${node.title || node.name} [${node.id}]`); walk(node.id, depth + 1); }); }; walk('root', 0); treeView.textContent = lines.join('\n'); };
         const renderGuides = () => {
@@ -624,7 +625,6 @@
         COMPONENT_GROUPS.forEach((group, groupIndex) => {
             const details = document.createElement('details');
             details.className = 'component-group';
-            if (groupIndex === 0) details.open = true;
             const summary = document.createElement('summary');
             summary.textContent = group.title;
             details.appendChild(summary);
@@ -646,7 +646,7 @@
         });
         window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, componentButtons, clickType: (type) => { const btn = componentButtons.find((item) => item.dataset.type === type); if (!btn) throw new Error(`button not found: ${type}`); btn.click(); return nodes; } };
         zoom = fitCanvasZoom();
-        applyZoom(); exportJson(); render();
+        applyZoom(); exportJson(); render(); syncHistoryButtons();
     </script>
 </body>
 </html>
