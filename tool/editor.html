@@ -13,6 +13,7 @@
         h1, h2, h3 { margin: 0 0 12px; }
         .field-list, .actions, .component-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .row { display: flex; gap: 8px; }
+        .stack-gap { margin-top: 10px; }
         button, select, input, textarea { width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 10px 12px; background: #fff; }
         button { cursor: pointer; }
         button.primary { background: #1677ff; border-color: #1677ff; color: #fff; }
@@ -60,18 +61,18 @@
             <div class="section-block">
                 <h3>常用组件</h3>
                 <div id="component-list" class="component-list"></div>
-                <div class="row"><select id="template-select">
+                <div class="row stack-gap"><select id="template-select">
                         <option value="list">列表页模板（侧栏 + 筛选 + 表格）</option>
                         <option value="dashboard">Dashboard 模板（指标卡 + 表格）</option>
                         <option value="form">表单页模板（表单容器）</option>
                         <option value="detail">详情页模板（信息卡 + 日志）</option>
                     </select></div>
-                <div class="row"><select id="template-import-mode">
+                <div class="row stack-gap"><select id="template-import-mode">
                         <option value="replace">清空导入</option>
                         <option value="append">追加导入</option>
                     </select></div>
-                <div class="row"><button id="import-template">一键导入</button></div>
-                <div class="row"><button id="duplicate-node">复制选中</button><button id="undo">撤销</button><button id="redo">重做</button></div>
+                <div class="row stack-gap"><button id="import-template">一键导入</button></div>
+                <div class="row stack-gap"><button id="duplicate-node">复制</button><button id="undo">撤销</button><button id="redo">重做</button></div>
             </div>
             <div class="section-block">
                 <h2>页面信息</h2>
