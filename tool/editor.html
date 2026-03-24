@@ -398,10 +398,11 @@
                 nodeText: node.text || '',
                 nodeX: node.x,
                 nodeY: node.y,
+                nodeZIndex: Number(node.zIndex ?? 0),
                 nodeWidth: node.width,
                 nodeHeight: node.height,
             } : {
-                nodeParentId: '', nodeType: '', nodeTitle: '', nodeName: '', nodeText: '', nodeX: '', nodeY: '', nodeWidth: '', nodeHeight: ''
+                nodeParentId: '', nodeType: '', nodeTitle: '', nodeName: '', nodeText: '', nodeX: '', nodeY: '', nodeZIndex: 0, nodeWidth: '', nodeHeight: ''
             };
             nodeEditorIds.forEach((id) => {
                 const el = document.getElementById(id);
