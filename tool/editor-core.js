@@ -24,7 +24,7 @@ export const NODE_TYPE_META = {
     select: { label: '下拉框', color: '#FDE68A', defaultWidth: 220, defaultHeight: 44, defaultText: '请选择' },
     datePicker: { label: '日期选择', color: '#FCE7F3', defaultWidth: 220, defaultHeight: 44, defaultText: '选择日期' },
     search: { label: '搜索框', color: '#FDE68A', defaultWidth: 280, defaultHeight: 44, defaultText: '搜索关键词' },
-    table: { label: '表格', color: '#DCFCE7', defaultWidth: 520, defaultHeight: 260, defaultText: 'flow_type ｜ system_name ｜ status ｜ approval_id ｜ 操作', defaultTable: { columns: ['flow_type', 'system_name', 'status', 'approval_id', '操作'], rows: [[], [], [], []] } },
+    table: { label: '表格', color: '#DCFCE7', defaultWidth: 520, defaultHeight: 260, defaultText: '列1 ｜ 列2 ｜ 列3 ｜ 列4', defaultTable: { columns: ['列1', '列2', '列3', '列4'], rows: [[], [], [], []] } },
     card: { label: '卡片', color: '#EDE9FE', defaultWidth: 240, defaultHeight: 140, defaultText: '卡片说明' },
     tag: { label: '标签', color: '#D1FAE5', defaultWidth: 88, defaultHeight: 32, defaultText: '标签' },
     text: { label: '文本', color: '#F3F4F6', defaultWidth: 220, defaultHeight: 56, defaultText: '正文描述' },
