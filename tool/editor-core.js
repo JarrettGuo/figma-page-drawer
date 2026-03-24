@@ -22,6 +22,9 @@ export const NODE_TYPE_META = {
     button: { label: '按钮', color: '#DBEAFE', defaultWidth: 120, defaultHeight: 40, defaultText: '按钮' },
     input: { label: '输入框', color: '#FEF3C7', defaultWidth: 220, defaultHeight: 44, defaultText: '请输入内容' },
     select: { label: '下拉框', color: '#FDE68A', defaultWidth: 220, defaultHeight: 44, defaultText: '请选择' },
+    checkbox: { label: '复选框', color: '#ECFCCB', defaultWidth: 180, defaultHeight: 32, defaultText: '复选项' },
+    radio: { label: '单选框', color: '#E0F2FE', defaultWidth: 180, defaultHeight: 32, defaultText: '单选项' },
+    switch: { label: '开关', color: '#DCFCE7', defaultWidth: 120, defaultHeight: 32, defaultText: '开关' },
     datePicker: { label: '日期选择', color: '#FCE7F3', defaultWidth: 220, defaultHeight: 44, defaultText: '选择日期' },
     search: { label: '搜索框', color: '#FDE68A', defaultWidth: 280, defaultHeight: 44, defaultText: '搜索关键词' },
     table: { label: '表格', color: '#DCFCE7', defaultWidth: 520, defaultHeight: 260, defaultText: '列1 ｜ 列2 ｜ 列3 ｜ 列4', defaultTable: { columns: ['列1', '列2', '列3', '列4'], rows: [[], [], [], []] } },
@@ -37,7 +40,7 @@ export const NODE_TYPE_META = {
 };
 
 export const COMPONENT_LIBRARY = [
-    'sidebar', 'button', 'input', 'select', 'datePicker', 'search', 'table', 'card', 'tag', 'text', 'title', 'image', 'modal', 'pagination', 'tabs', 'breadcrumb',
+    'sidebar', 'button', 'input', 'select', 'checkbox', 'radio', 'switch', 'datePicker', 'search', 'table', 'card', 'tag', 'text', 'title', 'image', 'modal', 'pagination', 'tabs', 'breadcrumb',
 ];
 
 export const PRESET_TEMPLATES = {

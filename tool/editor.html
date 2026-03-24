@@ -142,7 +142,7 @@
         const nodeEditorIds = ['nodeParentId','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight','nodeZIndex'];
         const COMPONENT_GROUPS = [
             { key: 'layout', title: '布局类', items: ['sidebar', 'tabs', 'breadcrumb'] },
-            { key: 'form', title: '表单类', items: ['input', 'select', 'datePicker', 'search', 'button'] },
+            { key: 'form', title: '表单类', items: ['input', 'select', 'checkbox', 'radio', 'switch', 'datePicker', 'search', 'button'] },
             { key: 'display', title: '展示类', items: ['table', 'card', 'tag', 'text', 'title', 'image'] },
             { key: 'feedback', title: '反馈类', items: ['modal', 'pagination'] },
         ];
@@ -219,7 +219,10 @@
                 titleEl.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'title'));
                 const textEl = document.createElement('div');
                 textEl.className = 'node-text';
-                textEl.textContent = node.text || node.type;
+                if (node.type === 'checkbox') textEl.textContent = `☐ ${node.text || '复选项'}`;
+                else if (node.type === 'radio') textEl.textContent = `◯ ${node.text || '单选项'}`;
+                else if (node.type === 'switch') textEl.textContent = `${node.text || '开关'}  ○━`;
+                else textEl.textContent = node.text || node.type;
                 textEl.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'text'));
                 el.appendChild(titleEl);
                 el.appendChild(textEl);
