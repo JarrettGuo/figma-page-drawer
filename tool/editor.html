@@ -26,8 +26,9 @@
         .guide-x { width: 1px; top: 0; bottom: 0; }
         .guide-y { height: 1px; left: 0; right: 0; }
         .node { position: absolute; border: 1px dashed #6b7280; padding: 8px; cursor: move; overflow: hidden; user-select: none; border-radius: 10px; }
-        .node.active { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
-        .node.multi-active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12); }
+        .node.active { border: 2px solid #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.22), 0 12px 24px rgba(22, 119, 255, 0.12); }
+        .node.multi-active { border: 2px solid #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18), 0 8px 18px rgba(37, 99, 235, 0.10); }
+        .node.parent-highlight { border: 2px dashed #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16); }
         .marquee { position: absolute; border: 1px dashed #1677ff; background: rgba(22,119,255,0.08); pointer-events: none; z-index: 9999; }
         .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
         .node-level { font-size: 11px; color: #6b7280; font-weight: 500; }
@@ -156,6 +157,7 @@
         let activeTableEditorField = null;
         let zoom = 1;
         let guides = { x: null, y: null };
+        let hoverParentId = null;
         let isSyncingEditor = false;
         let isComposing = false;
         let activeEditorField = null;
@@ -205,7 +207,8 @@
                 const el = document.createElement('div');
                 const isActive = node.id === activeId;
                 const isMultiActive = selectedIds.includes(node.id);
-                el.className = `node${isActive ? ' active' : ''}${isMultiActive && !isActive ? ' multi-active' : ''}`;
+                const isParentHighlight = hoverParentId && hoverParentId === node.id;
+                el.className = `node${isActive ? ' active' : ''}${isMultiActive && !isActive ? ' multi-active' : ''}${isParentHighlight ? ' parent-highlight' : ''}`;
                 el.style.left = `${node.x}px`;
                 el.style.top = `${node.y}px`;
                 el.style.width = `${node.width}px`;
@@ -646,11 +649,15 @@
                 const primary = dragState.origins.find((item) => item.id === dragState.id);
                 const primaryNode = nodes.find((item) => item.id === dragState.id);
                 const moved = updateNodePosition({ ...primaryNode, x: primary.x, y: primary.y }, boundedDeltaX, boundedDeltaY, null, DEFAULT_CANVAS);
+                const movedPreview = { ...primaryNode, x: softSnap(primary.x + boundedDeltaX), y: softSnap(primary.y + boundedDeltaY) };
+                const candidateParents = nodes.filter((node) => node.type === 'card' && !dragState.ids.includes(node.id));
+                const targetParent = candidateParents.find((node) => movedPreview.x >= node.x + 12 && movedPreview.y >= node.y + 12 && movedPreview.x + movedPreview.width <= node.x + node.width - 12 && movedPreview.y + movedPreview.height <= node.y + node.height - 12);
+                hoverParentId = targetParent?.id || null;
                 guides = findAlignmentGuides(moved, nodes.filter((node) => !dragState.ids.includes(node.id)));
                 nodes = nodes.map((node) => {
                     const origin = dragState.origins.find((item) => item.id === node.id);
                     if (!origin) return node;
-                    return normalizeNodeWithParent(nodes, { ...node, x: softSnap(origin.x + boundedDeltaX), y: softSnap(origin.y + boundedDeltaY) }, DEFAULT_CANVAS);
+                    return normalizeNodeWithParent(nodes, { ...node, parentId: hoverParentId || node.parentId, x: softSnap(origin.x + boundedDeltaX), y: softSnap(origin.y + boundedDeltaY) }, DEFAULT_CANVAS);
                 });
             } else {
                 const index = nodes.findIndex((item) => item.id === dragState.id);
@@ -671,6 +678,7 @@
             }
             if (dragState) exportJson();
             guides = { x: null, y: null };
+            hoverParentId = null;
             dragState = null;
             render();
         });
@@ -753,7 +761,7 @@
             details.appendChild(body);
             componentList.appendChild(details);
         });
-        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, getSelectedIds: () => [...selectedIds], componentButtons, clickType: (type) => { const btn = componentButtons.find((item) => item.dataset.type === type); if (!btn) throw new Error(`button not found: ${type}`); btn.click(); return nodes; } };
+        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, getSelectedIds: () => [...selectedIds], getHoverParentId: () => hoverParentId, componentButtons, clickType: (type) => { const btn = componentButtons.find((item) => item.dataset.type === type); if (!btn) throw new Error(`button not found: ${type}`); btn.click(); return nodes; } };
         zoom = fitCanvasZoom();
         applyZoom(); exportJson(); render(); syncHistoryButtons();
     </script>
