@@ -210,13 +210,36 @@ export function buildTemplateNodes(templateKey) {
     return template.map((item, index) => createNode({ ...item, id: `preset_${templateKey}_${index}` }));
 }
 
+
+export function isPaginationInsideTable(tableNode, paginationNode) {
+    if (!tableNode || !paginationNode) return false;
+    const tableLeft = Number(tableNode.x || 0);
+    const tableTop = Number(tableNode.y || 0);
+    const tableRight = tableLeft + Number(tableNode.width || 0);
+    const tableBottom = tableTop + Number(tableNode.height || 0);
+    const pagLeft = Number(paginationNode.x || 0);
+    const pagTop = Number(paginationNode.y || 0);
+    const pagRight = pagLeft + Number(paginationNode.width || 0);
+    const pagBottom = pagTop + Number(paginationNode.height || 0);
+    const inside = pagLeft >= tableLeft - 24 && pagRight <= tableRight + 24 && pagTop >= tableTop && pagBottom <= tableBottom + 48;
+    const nearBottomRight = pagLeft >= tableRight - 260 && pagTop >= tableBottom - 120;
+    return inside || nearBottomRight;
+}
+
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
+    const normalizedNodes = nodes.map((node) => ({ ...node }));
+    const tables = normalizedNodes.filter((node) => node.type === 'table');
+    const paginations = normalizedNodes.filter((node) => node.type === 'pagination');
+    paginations.forEach((pagination) => {
+        const owner = tables.find((table) => isPaginationInsideTable(table, pagination));
+        if (owner) pagination.parentId = owner.id;
+    });
     return {
         meta: { version: '1.0', source: 'visual-editor', description: `${form.pageName || '未命名页面'} unified json` },
         form,
         wireframe: {
             canvas,
-            nodes: [{ id: 'root', parentId: null, type: 'frame', name: form.pageName || '未命名页面', title: form.pageName || '未命名页面', text: '', x: 0, y: 0, width: canvas.width, height: canvas.height }, ...nodes],
+            nodes: [{ id: 'root', parentId: null, type: 'frame', name: form.pageName || '未命名页面', title: form.pageName || '未命名页面', text: '', x: 0, y: 0, width: canvas.width, height: canvas.height }, ...normalizedNodes],
         },
     };
 }

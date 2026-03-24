@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendTableColumn, appendTableRow, constrainNode, createNode, DEFAULT_CANVAS, normalizeTableConfig, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
+import { appendTableColumn, appendTableRow, buildUnifiedJson, constrainNode, createNode, DEFAULT_CANVAS, isPaginationInsideTable, normalizeTableConfig, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
 
 describe('editor-core', () => {
     it('creates node with defaults', () => {
@@ -66,5 +66,14 @@ describe('editor-core', () => {
         expect(appended.tableConfig.columns.at(-1)).toBe('新增列');
         const removed = removeTableColumn(appended);
         expect(removed.tableConfig.columns.length).toBe(node.tableConfig.columns.length);
+    });
+
+    it('detects pagination inside table and rewrites parent on export', () => {
+        const table = createNode({ id: 'table_6', type: 'table', x: 200, y: 200, width: 720, height: 420 });
+        const pagination = createNode({ id: 'pagination_1', type: 'pagination', x: 688, y: 560, width: 224, height: 40, parentId: 'root' });
+        expect(isPaginationInsideTable(table, pagination)).toBe(true);
+        const unified = buildUnifiedJson({ form: { pageName: 'test' }, nodes: [table, pagination], canvas: DEFAULT_CANVAS });
+        const exportedPagination = unified.wireframe.nodes.find((item) => item.id === 'pagination_1');
+        expect(exportedPagination.parentId).toBe('table_6');
     });
 });
