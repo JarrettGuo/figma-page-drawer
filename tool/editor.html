@@ -368,15 +368,23 @@
         document.getElementById('zoom-out').onclick = () => { zoom = Math.max(0.5, Number((zoom - 0.1).toFixed(2))); applyZoom(); };
         document.getElementById('zoom-reset').onclick = () => { zoom = 0.67; applyZoom(); };
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
+        const componentButtons = [];
         COMPONENT_LIBRARY.forEach((type) => {
             const meta = NODE_TYPE_META[type];
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'component-button';
+            btn.dataset.type = type;
             btn.innerHTML = `${meta.label}<small>${Math.round(meta.defaultWidth)} × ${Math.round(meta.defaultHeight)}</small>`;
-            btn.addEventListener('click', () => addNode(type));
+            btn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                addNode(type);
+            });
+            componentButtons.push(btn);
             componentList.appendChild(btn);
         });
+        window.__FIGMA_DRAWER_DEBUG__ = { addNode, getNodes: () => nodes, componentButtons };
         applyZoom(); exportJson(); render();
     </script>
 </body>
