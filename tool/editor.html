@@ -10,63 +10,72 @@
         .app { display: grid; grid-template-columns: 320px 1fr 360px; min-height: 100vh; }
         .panel { background: #fff; border-right: 1px solid #e5e7eb; padding: 16px; overflow: auto; }
         .panel.right { border-right: 0; border-left: 1px solid #e5e7eb; }
-        h1, h2 { margin: 0 0 12px; }
-        .toolbar, .field-list, .actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        h1, h2, h3 { margin: 0 0 12px; }
+        .toolbar, .field-list, .actions, .component-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .row { display: flex; gap: 8px; }
         button, select, input, textarea { width: 100%; font-size: 13px; border-radius: 8px; border: 1px solid #d1d5db; padding: 10px 12px; background: #fff; }
-        button.primary { background: #1677ff; border-color: #1677ff; color: #fff; cursor: pointer; }
+        button { cursor: pointer; }
+        button.primary { background: #1677ff; border-color: #1677ff; color: #fff; }
         .canvas-wrap { padding: 16px; overflow: auto; }
         .canvas-frame { transform-origin: top left; }
         .zoom-bar { display: flex; gap: 8px; margin-bottom: 12px; }
         .canvas {
             position: relative; width: 1440px; height: 1024px; background: #fff; border: 1px solid #d1d5db;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            background-image: linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
-            background-size: 8px 8px;
+            background-image: linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+            background-size: 16px 16px;
         }
-        .guide-x, .guide-y { position: absolute; background: rgba(22, 119, 255, 0.45); pointer-events: none; z-index: 100; }
+        .guide-x, .guide-y { position: absolute; background: rgba(22, 119, 255, 0.4); pointer-events: none; z-index: 100; }
         .guide-x { width: 1px; top: 0; bottom: 0; }
         .guide-y { height: 1px; left: 0; right: 0; }
-        .node { position: absolute; border: 1px dashed #6b7280; padding: 8px; cursor: move; overflow: hidden; user-select: none; }
+        .node { position: absolute; border: 1px dashed #6b7280; padding: 8px; cursor: move; overflow: hidden; user-select: none; border-radius: 10px; }
         .node.active { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
         .node-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
         .node-level { font-size: 11px; color: #6b7280; font-weight: 500; }
-        .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; }
+        .node-text { font-size: 12px; color: #374151; white-space: pre-wrap; line-height: 1.4; pointer-events: none; }
         .resize-handle { position: absolute; width: 10px; height: 10px; right: -5px; bottom: -5px; background: #1677ff; border-radius: 50%; cursor: se-resize; }
         .inline-editor { position: absolute; z-index: 20; border: 1px solid #1677ff; border-radius: 8px; padding: 8px; resize: none; font-size: 12px; line-height: 1.4; outline: none; background: rgba(255,255,255,0.98); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
         .tree { font-size: 12px; color: #374151; margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; white-space: pre-wrap; }
         label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-bottom: 10px; }
         textarea { min-height: 120px; }
-        .hint { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+        .hint { font-size: 12px; color: #6b7280; margin-bottom: 12px; line-height: 1.5; }
+        .component-button { text-align: left; }
+        .component-button small { display: block; color: #6b7280; margin-top: 4px; }
+        .section-block { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+        .muted { color: #6b7280; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="app">
         <aside class="panel">
-            <h1>线框区</h1>
-            <div class="hint">支持拖拽画区块、基础对齐参考线、缩放画布、模板预设、双击写文字。</div>
-            <div class="toolbar">
-                <div class="row"><button id="draw-section">拖拽创建区块</button><button id="draw-table">拖拽创建表格</button></div>
-                <div class="row"><button id="add-filter">新增筛选区</button><button id="add-button">新增按钮区</button></div>
-                <div class="row"><button id="preset-list">插入列表页模板</button><button id="undo">撤销</button></div>
-                <div class="row"><button id="redo">重做</button><button id="duplicate-node">复制选中节点</button></div>
+            <h1>组件区</h1>
+            <div class="hint">只保留草图常用组件。点击可直接加到画布，或先选中容器再添加。拖拽时只做轻量吸附，不追求像素级精确。</div>
+            <div class="section-block">
+                <h3>常用组件</h3>
+                <div id="component-list" class="component-list"></div>
+                <div class="row"><button id="preset-list">插入列表页草图模板</button><button id="duplicate-node">复制选中</button></div>
+                <div class="row"><button id="undo">撤销</button><button id="redo">重做</button></div>
             </div>
-            <h2>表单区</h2>
-            <div class="field-list">
-                <label>页面类型<select id="pageType"><option value="list">列表页</option><option value="dashboard">Dashboard</option><option value="form">表单页</option><option value="detail">详情页</option></select></label>
-                <label>页面名称<input id="pageName" value="未命名页面" /></label>
-                <label>平台<select id="platform"><option value="web">web</option><option value="mobile">mobile</option></select></label>
-                <label>主色<input id="colorPrimary" value="#1677FF" /></label>
-                <label>圆角<input id="radius" type="number" value="12" /></label>
-                <label>密度<select id="density"><option value="compact">compact</option><option value="medium" selected>medium</option><option value="comfortable">comfortable</option></select></label>
-                <label>表格列<input id="tableColumns" value="列1,列2" /></label>
-                <label>筛选项<input id="filters" value="筛选项1" /></label>
-                <label>按钮<input id="buttons" value="新建" /></label>
-                <label>备注<textarea id="notes"></textarea></label>
+            <div class="section-block">
+                <h2>页面信息</h2>
+                <div class="field-list">
+                    <label>页面类型<select id="pageType"><option value="list">列表页</option><option value="dashboard">Dashboard</option><option value="form">表单页</option><option value="detail">详情页</option></select></label>
+                    <label>页面名称<input id="pageName" value="未命名页面" /></label>
+                    <label>页面目标<input id="pageGoal" placeholder="比如：管理用户、查看订单、配置活动" /></label>
+                    <label>使用对象<input id="targetUser" placeholder="比如：运营、销售、管理员" /></label>
+                    <label>平台<select id="platform"><option value="web">web</option><option value="mobile">mobile</option></select></label>
+                    <label>页面风格<select id="pageStyle"><option value="admin">后台管理</option><option value="dashboard">数据看板</option><option value="simple">简洁业务页</option></select></label>
+                    <label>主色<input id="colorPrimary" value="#1677FF" /></label>
+                    <label>圆角<input id="radius" type="number" value="12" /></label>
+                    <label>密度<select id="density"><option value="compact">compact</option><option value="medium" selected>medium</option><option value="comfortable">comfortable</option></select></label>
+                    <label>草图松散度<select id="looseness"><option value="tight">较规整</option><option value="loose" selected>较松散</option><option value="free">很松散</option></select></label>
+                    <label>页面备注<textarea id="notes" placeholder="补充页面说明、交互提醒、业务规则"></textarea></label>
+                </div>
             </div>
         </aside>
         <main class="canvas-wrap">
             <div class="zoom-bar"><button id="zoom-out">-</button><button id="zoom-reset">100%</button><button id="zoom-in">+</button></div>
+            <div class="hint">画布区：拖动组件排版；双击节点正文可直接改文字；双击节点标题可改标题。</div>
             <div id="canvas-frame" class="canvas-frame"><div id="canvas" class="canvas"></div></div>
         </main>
         <aside class="panel right">
@@ -95,18 +104,17 @@
         </aside>
     </div>
     <script type="module">
-        import { buildTemplateNodes, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, resolveParentId, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, snapToGrid } from './editor-core.js';
+        import { buildTemplateNodes, COMPONENT_LIBRARY, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, parseUnifiedJson, serializeState, resolveParentId, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, softSnap } from './editor-core.js';
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
         const treeView = document.getElementById('tree-view');
-        const formIds = ['pageType', 'pageName', 'platform', 'colorPrimary', 'radius', 'density', 'tableColumns', 'filters', 'buttons', 'notes'];
+        const componentList = document.getElementById('component-list');
+        const formIds = ['pageType', 'pageName', 'pageGoal', 'targetUser', 'platform', 'pageStyle', 'colorPrimary', 'radius', 'density', 'looseness', 'notes'];
         let nodes = [];
         let activeId = null;
         let dragState = null;
         let inlineEditor = null;
-        let drawMode = null;
-        let drawDraft = null;
         let zoom = 1;
         let guides = { x: null, y: null };
         const history = [];
@@ -125,19 +133,12 @@
         const getDepth = (node) => { let depth = 0; let parentId = node.parentId; while (parentId && parentId !== 'root') { const parent = nodes.find((item) => item.id === parentId); if (!parent) { break; } depth += 1; parentId = parent.parentId; } return depth; };
         const renderTree = () => { const lines = ['层级结构']; const walk = (parentId, depth) => { nodes.filter((item) => (item.parentId || 'root') === parentId).forEach((node) => { lines.push(`${'  '.repeat(depth)}- ${node.title || node.name} [${node.id}]`); walk(node.id, depth + 1); }); }; walk('root', 0); treeView.textContent = lines.join('\n'); };
         const renderGuides = () => {
-            canvas.querySelectorAll('.guide-x,.guide-y,.draw-draft').forEach((el) => el.remove());
+            canvas.querySelectorAll('.guide-x,.guide-y').forEach((el) => el.remove());
             if (guides.x !== null) { const line = document.createElement('div'); line.className = 'guide-x'; line.style.left = `${guides.x}px`; canvas.appendChild(line); }
             if (guides.y !== null) { const line = document.createElement('div'); line.className = 'guide-y'; line.style.top = `${guides.y}px`; canvas.appendChild(line); }
-            if (drawDraft) {
-                const draft = document.createElement('div');
-                draft.className = 'node draw-draft';
-                draft.style.left = `${drawDraft.x}px`; draft.style.top = `${drawDraft.y}px`; draft.style.width = `${drawDraft.width}px`; draft.style.height = `${drawDraft.height}px`;
-                draft.style.background = 'rgba(22,119,255,0.08)';
-                draft.innerHTML = `<div class="node-title">新建${drawMode}</div>`;
-                canvas.appendChild(draft);
-            }
         };
         const render = () => {
+            closeInlineEditor();
             canvas.innerHTML = '';
             const ordered = [...nodes].sort((a, b) => getDepth(a) - getDepth(b));
             ordered.forEach((node) => {
@@ -145,13 +146,29 @@
                 const depth = getDepth(node);
                 const el = document.createElement('div');
                 el.className = `node${node.id === activeId ? ' active' : ''}`;
-                el.style.left = `${node.x}px`; el.style.top = `${node.y}px`; el.style.width = `${node.width}px`; el.style.height = `${node.height}px`; el.style.background = meta.color; el.style.zIndex = String(10 + depth);
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+                el.style.width = `${node.width}px`;
+                el.style.height = `${node.height}px`;
+                el.style.background = meta.color;
+                el.style.zIndex = String(10 + depth);
                 el.dataset.id = node.id;
-                el.innerHTML = `<div class="node-title"><span>${node.title || node.name}</span><span class="node-level">L${depth}</span></div><div class="node-text">${node.text || node.type}</div>`;
+                const titleEl = document.createElement('div');
+                titleEl.className = 'node-title';
+                titleEl.innerHTML = `<span>${node.title || node.name}</span><span class="node-level">L${depth}</span>`;
+                titleEl.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'title'));
+                const textEl = document.createElement('div');
+                textEl.className = 'node-text';
+                textEl.textContent = node.text || node.type;
+                textEl.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'text'));
+                el.appendChild(titleEl);
+                el.appendChild(textEl);
                 el.addEventListener('mousedown', (event) => startDrag(event, node.id, 'move'));
                 el.addEventListener('click', () => selectNode(node.id));
-                el.addEventListener('dblclick', (event) => openInlineEditor(event, node.id, 'text'));
-                const resizeHandle = document.createElement('div'); resizeHandle.className = 'resize-handle'; resizeHandle.addEventListener('mousedown', (event) => startDrag(event, node.id, 'resize')); el.appendChild(resizeHandle);
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                resizeHandle.addEventListener('mousedown', (event) => startDrag(event, node.id, 'resize'));
+                el.appendChild(resizeHandle);
                 canvas.appendChild(el);
             });
             renderGuides(); syncNodeEditor(); renderTree();
@@ -159,37 +176,165 @@
         const getFormRaw = () => Object.fromEntries(formIds.map((id) => [id, document.getElementById(id).value]));
         const getFormData = () => normalizeFormInput(getFormRaw());
         const exportJson = () => { output.value = serializeState({ form: getFormData(), nodes, canvas: { width: 1440, height: 1024 } }); };
-        const addNode = (type) => { pushHistory(); const labels = NODE_TYPE_META[type] || { label: '区块' }; const parentId = resolveParentId(nodes, activeId, 'root'); const node = createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId, name: labels.label, title: labels.label, text: `${labels.label}说明`, x: 64 + nodes.length * 16, y: 64 + nodes.length * 16, width: type === 'table' ? 544 : 256, height: type === 'table' ? 320 : 120 }); nodes.push(node); activeId = node.id; render(); exportJson(); };
+        const addNode = (type) => {
+            pushHistory();
+            const meta = NODE_TYPE_META[type] || { label: '区块', defaultWidth: 240, defaultHeight: 120 };
+            const parentId = resolveParentId(nodes, activeId, 'root');
+            const node = createNode({
+                id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                type,
+                parentId,
+                name: meta.label,
+                title: meta.label,
+                text: `${meta.label}说明`,
+                x: 64 + nodes.length * 18,
+                y: 64 + nodes.length * 18,
+                width: meta.defaultWidth,
+                height: meta.defaultHeight,
+            });
+            nodes.push(node);
+            activeId = node.id;
+            render();
+            exportJson();
+        };
         const insertPreset = (key) => { pushHistory(); nodes = [...nodes, ...buildTemplateNodes(key)]; render(); exportJson(); };
         const selectNode = (id) => { activeId = id; render(); };
-        const syncNodeEditor = () => { const node = nodes.find((item) => item.id === activeId); ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight'].forEach((id) => { document.getElementById(id).value = ''; }); if (!node) { return; } document.getElementById('nodeParentId').value = node.parentId || 'root'; document.getElementById('nodeType').value = node.type; document.getElementById('nodeTitle').value = node.title || ''; document.getElementById('nodeName').value = node.name; document.getElementById('nodeText').value = node.text || ''; document.getElementById('nodeX').value = node.x; document.getElementById('nodeY').value = node.y; document.getElementById('nodeWidth').value = node.width; document.getElementById('nodeHeight').value = node.height; };
-        const updateNode = () => { const index = nodes.findIndex((item) => item.id === activeId); if (index < 0) { return; } pushHistory(); nodes[index] = { ...nodes[index], parentId: document.getElementById('nodeParentId').value || 'root', type: document.getElementById('nodeType').value, title: document.getElementById('nodeTitle').value, name: document.getElementById('nodeName').value, text: document.getElementById('nodeText').value, x: snapToGrid(document.getElementById('nodeX').value), y: snapToGrid(document.getElementById('nodeY').value), width: Math.max(32, snapToGrid(document.getElementById('nodeWidth').value)), height: Math.max(32, snapToGrid(document.getElementById('nodeHeight').value)) }; render(); exportJson(); };
-        const deleteNode = () => { if (!activeId) { return; } pushHistory(); nodes = nodes.filter((item) => item.id !== activeId); activeId = null; closeInlineEditor(); render(); exportJson(); };
+        const syncNodeEditor = () => {
+            const node = nodes.find((item) => item.id === activeId);
+            ['nodeParentId','nodeType','nodeTitle','nodeName','nodeText','nodeX','nodeY','nodeWidth','nodeHeight'].forEach((id) => { document.getElementById(id).value = ''; });
+            if (!node) { return; }
+            document.getElementById('nodeParentId').value = node.parentId || 'root';
+            document.getElementById('nodeType').value = node.type;
+            document.getElementById('nodeTitle').value = node.title || '';
+            document.getElementById('nodeName').value = node.name;
+            document.getElementById('nodeText').value = node.text || '';
+            document.getElementById('nodeX').value = node.x;
+            document.getElementById('nodeY').value = node.y;
+            document.getElementById('nodeWidth').value = node.width;
+            document.getElementById('nodeHeight').value = node.height;
+        };
+        const updateNode = () => {
+            const index = nodes.findIndex((item) => item.id === activeId);
+            if (index < 0) { return; }
+            pushHistory();
+            nodes[index] = {
+                ...nodes[index],
+                parentId: document.getElementById('nodeParentId').value || 'root',
+                type: document.getElementById('nodeType').value,
+                title: document.getElementById('nodeTitle').value,
+                name: document.getElementById('nodeName').value,
+                text: document.getElementById('nodeText').value,
+                x: softSnap(document.getElementById('nodeX').value),
+                y: softSnap(document.getElementById('nodeY').value),
+                width: Math.max(24, softSnap(document.getElementById('nodeWidth').value)),
+                height: Math.max(24, softSnap(document.getElementById('nodeHeight').value)),
+            };
+            render();
+            exportJson();
+        };
+        const deleteNode = () => {
+            if (!activeId) { return; }
+            pushHistory();
+            const deleteIds = new Set([activeId]);
+            let changed = true;
+            while (changed) {
+                changed = false;
+                nodes.forEach((item) => {
+                    if (deleteIds.has(item.parentId) && !deleteIds.has(item.id)) {
+                        deleteIds.add(item.id);
+                        changed = true;
+                    }
+                });
+            }
+            nodes = nodes.filter((item) => !deleteIds.has(item.id));
+            activeId = null;
+            render();
+            exportJson();
+        };
         const copyNode = () => { const node = nodes.find((item) => item.id === activeId); if (!node) { return; } pushHistory(); const copied = duplicateNode(node); nodes.push(copied); activeId = copied.id; render(); exportJson(); };
         const undo = () => { const state = history.pop(); if (!state) { return; } future.push(snapshot()); restore(state); };
         const redo = () => { const state = future.pop(); if (!state) { return; } history.push(snapshot()); restore(state); };
-        const importJson = () => { try { pushHistory(); const parsed = parseUnifiedJson(output.value); nodes = parsed.nodes || []; const form = parsed.form || {}; document.getElementById('pageType').value = form.pageType || 'list'; document.getElementById('pageName').value = form.pageName || '未命名页面'; document.getElementById('platform').value = form.platform || 'web'; document.getElementById('colorPrimary').value = form.style?.colorPrimary || '#1677FF'; document.getElementById('radius').value = form.style?.radius || 12; document.getElementById('density').value = form.style?.density || 'medium'; document.getElementById('tableColumns').value = (form.tableColumns || []).join(','); document.getElementById('filters').value = (form.filters || []).join(','); document.getElementById('buttons').value = (form.buttons || []).join(','); document.getElementById('notes').value = form.notes || ''; activeId = nodes[0]?.id || null; render(); exportJson(); } catch (error) { alert(`导入失败: ${error.message}`); } };
-        const startDrag = (event, id, mode) => { event.stopPropagation(); event.preventDefault(); closeInlineEditor(); const node = nodes.find((item) => item.id === id); if (!node) { return; } activeId = id; dragState = { id, mode, startX: event.clientX, startY: event.clientY, originX: node.x, originY: node.y, originWidth: node.width, originHeight: node.height }; render(); };
-        const openInlineEditor = (event, id, field = 'text') => { event.stopPropagation(); closeInlineEditor(); const node = nodes.find((item) => item.id === id); if (!node) { return; } activeId = id; const textarea = document.createElement('textarea'); textarea.className = 'inline-editor'; textarea.value = field === 'title' ? (node.title || '') : (node.text || ''); textarea.style.left = `${node.x + 4}px`; textarea.style.top = `${node.y + 24}px`; textarea.style.width = `${Math.max(120, node.width - 8)}px`; textarea.style.height = `${Math.max(48, node.height - 28)}px`; textarea.addEventListener('keydown', (keyEvent) => { if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') { saveInlineEditor(id, textarea.value, field); } if (keyEvent.key === 'Escape') { closeInlineEditor(); } }); textarea.addEventListener('blur', () => saveInlineEditor(id, textarea.value, field)); canvas.appendChild(textarea); inlineEditor = textarea; textarea.focus(); render(); };
-        const saveInlineEditor = (id, value, field = 'text') => { const index = nodes.findIndex((item) => item.id === id); if (index >= 0) { pushHistory(); nodes[index] = field === 'title' ? updateNodeTitle(nodes[index], value) : updateNodeText(nodes[index], value); } closeInlineEditor(); render(); exportJson(); };
-        const closeInlineEditor = () => { if (inlineEditor && inlineEditor.parentNode) { inlineEditor.parentNode.removeChild(inlineEditor); } inlineEditor = null; };
-        const canvasPoint = (event) => { const rect = canvas.getBoundingClientRect(); return { x: snapToGrid((event.clientX - rect.left) / zoom), y: snapToGrid((event.clientY - rect.top) / zoom) }; };
-        canvas.addEventListener('mousedown', (event) => {
-            if (!drawMode || event.target !== canvas) { return; }
-            pushHistory();
-            const point = canvasPoint(event);
-            drawDraft = { x: point.x, y: point.y, width: 32, height: 32 };
-            dragState = { id: null, mode: 'draw', startX: point.x, startY: point.y };
+        const importJson = () => {
+            try {
+                pushHistory();
+                const parsed = parseUnifiedJson(output.value);
+                nodes = parsed.nodes || [];
+                const form = parsed.form || {};
+                document.getElementById('pageType').value = form.pageType || 'list';
+                document.getElementById('pageName').value = form.pageName || '未命名页面';
+                document.getElementById('pageGoal').value = form.pageGoal || '';
+                document.getElementById('targetUser').value = form.targetUser || '';
+                document.getElementById('platform').value = form.platform || 'web';
+                document.getElementById('pageStyle').value = form.pageStyle || 'admin';
+                document.getElementById('colorPrimary').value = form.style?.colorPrimary || '#1677FF';
+                document.getElementById('radius').value = form.style?.radius || 12;
+                document.getElementById('density').value = form.style?.density || 'medium';
+                document.getElementById('looseness').value = form.style?.looseness || 'loose';
+                document.getElementById('notes').value = form.notes || '';
+                activeId = nodes[0]?.id || null;
+                render();
+                exportJson();
+            } catch (error) {
+                alert(`导入失败: ${error.message}`);
+            }
+        };
+        const startDrag = (event, id, mode) => {
+            event.stopPropagation();
+            event.preventDefault();
+            closeInlineEditor();
+            const node = nodes.find((item) => item.id === id);
+            if (!node) { return; }
+            activeId = id;
+            dragState = { id, mode, startX: event.clientX, startY: event.clientY, originX: node.x, originY: node.y, originWidth: node.width, originHeight: node.height };
             render();
-        });
+        };
+        const openInlineEditor = (event, id, field = 'text') => {
+            event.stopPropagation();
+            event.preventDefault();
+            const node = nodes.find((item) => item.id === id);
+            if (!node) { return; }
+            activeId = id;
+            closeInlineEditor();
+            const textarea = document.createElement('textarea');
+            textarea.className = 'inline-editor';
+            textarea.value = field === 'title' ? (node.title || '') : (node.text || '');
+            textarea.style.left = `${node.x + 6}px`;
+            textarea.style.top = `${field === 'title' ? node.y + 6 : node.y + 28}px`;
+            textarea.style.width = `${Math.max(120, node.width - 12)}px`;
+            textarea.style.height = `${field === 'title' ? 42 : Math.max(48, node.height - 34)}px`;
+            textarea.addEventListener('mousedown', (mouseEvent) => mouseEvent.stopPropagation());
+            textarea.addEventListener('keydown', (keyEvent) => {
+                if ((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key === 'Enter') {
+                    saveInlineEditor(id, textarea.value, field);
+                }
+                if (keyEvent.key === 'Escape') {
+                    closeInlineEditor();
+                }
+            });
+            textarea.addEventListener('blur', () => saveInlineEditor(id, textarea.value, field));
+            canvas.appendChild(textarea);
+            inlineEditor = textarea;
+            textarea.focus();
+            textarea.select();
+        };
+        const saveInlineEditor = (id, value, field = 'text') => {
+            const index = nodes.findIndex((item) => item.id === id);
+            if (index >= 0) {
+                pushHistory();
+                nodes[index] = field === 'title' ? updateNodeTitle(nodes[index], value) : updateNodeText(nodes[index], value);
+            }
+            closeInlineEditor();
+            render();
+            exportJson();
+        };
+        const closeInlineEditor = () => {
+            if (inlineEditor && inlineEditor.parentNode) {
+                inlineEditor.parentNode.removeChild(inlineEditor);
+            }
+            inlineEditor = null;
+        };
         window.addEventListener('mousemove', (event) => {
             if (!dragState) { return; }
-            if (dragState.mode === 'draw') {
-                const point = canvasPoint(event);
-                drawDraft = { x: Math.min(dragState.startX, point.x), y: Math.min(dragState.startY, point.y), width: Math.max(32, snapToGrid(Math.abs(point.x - dragState.startX))), height: Math.max(32, snapToGrid(Math.abs(point.y - dragState.startY))) };
-                render();
-                return;
-            }
             const index = nodes.findIndex((item) => item.id === dragState.id);
             if (index < 0) { return; }
             const deltaX = (event.clientX - dragState.startX) / zoom;
@@ -205,28 +350,18 @@
             render();
         });
         window.addEventListener('mouseup', () => {
-            if (dragState?.mode === 'draw' && drawDraft) {
-                const labels = NODE_TYPE_META[drawMode] || { label: '区块' };
-                const parentId = resolveParentId(nodes, activeId, 'root');
-                nodes.push(createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type: drawMode, parentId, name: labels.label, title: labels.label, text: `${labels.label}说明`, ...drawDraft }));
-                activeId = nodes[nodes.length - 1].id;
-                drawDraft = null;
-            }
             if (dragState) { exportJson(); }
             guides = { x: null, y: null };
             dragState = null;
             render();
         });
         window.addEventListener('keydown', (event) => {
+            if (inlineEditor) { return; }
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); copyNode(); }
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) { event.preventDefault(); undo(); }
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redo(); }
             if (event.key === 'Delete') { deleteNode(); }
         });
-        document.getElementById('draw-section').onclick = () => { drawMode = 'section'; };
-        document.getElementById('draw-table').onclick = () => { drawMode = 'table'; };
-        document.getElementById('add-filter').onclick = () => addNode('filter');
-        document.getElementById('add-button').onclick = () => addNode('button');
         document.getElementById('preset-list').onclick = () => insertPreset('list');
         document.getElementById('undo').onclick = undo;
         document.getElementById('redo').onclick = redo;
@@ -240,6 +375,14 @@
         document.getElementById('zoom-out').onclick = () => { zoom = Math.max(0.5, Number((zoom - 0.1).toFixed(2))); applyZoom(); };
         document.getElementById('zoom-reset').onclick = () => { zoom = 1; applyZoom(); };
         formIds.forEach((id) => { document.getElementById(id).addEventListener('change', exportJson); });
+        COMPONENT_LIBRARY.forEach((type) => {
+            const meta = NODE_TYPE_META[type];
+            const btn = document.createElement('button');
+            btn.className = 'component-button';
+            btn.innerHTML = `${meta.label}<small>${Math.round(meta.defaultWidth)} × ${Math.round(meta.defaultHeight)}</small>`;
+            btn.onclick = () => addNode(type);
+            componentList.appendChild(btn);
+        });
         applyZoom(); exportJson(); render();
     </script>
 </body>
