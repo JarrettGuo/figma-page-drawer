@@ -129,7 +129,7 @@
         import * as Core from './editor-core.js';
         window.addEventListener('error', (event) => { console.error('[figma-drawer-error]', event.message, event.error); });
         window.addEventListener('unhandledrejection', (event) => { console.error('[figma-drawer-rejection]', event.reason); });
-        const { DEFAULT_CANVAS, GRID_SIZE, appendTableColumn, appendTableRow, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, normalizeTableConfig, parseUnifiedJson, removeTableColumn, removeTableRow, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, updateTableCell, updateTableColumns, softSnap } = Core;
+        const { DEFAULT_CANVAS, GRID_SIZE, appendTableColumn, appendTableRow, buildTemplateNodes, COMPONENT_LIBRARY, constrainNode, createNode, duplicateNode, findAlignmentGuides, NODE_TYPE_META, normalizeFormInput, normalizeNodeWithParent, normalizeTableConfig, parseUnifiedJson, removeTableColumn, removeTableRow, serializeState, updateNodePosition, updateNodeSize, updateNodeText, updateNodeTitle, updateTableCell, updateTableColumns, softSnap } = Core;
         const canvas = document.getElementById('canvas');
         const canvasFrame = document.getElementById('canvas-frame');
         const output = document.getElementById('output');
@@ -295,7 +295,7 @@
             const ids = selectedIds.length ? selectedIds : (activeId ? [activeId] : []);
             if (!ids.length) return;
             pushHistory();
-            nodes = nodes.map((node) => ids.includes(node.id) ? updateNodePosition(node, deltaX, deltaY, null, DEFAULT_CANVAS) : node);
+            nodes = nodes.map((node) => ids.includes(node.id) ? normalizeNodeWithParent(nodes, updateNodePosition(node, deltaX, deltaY, null, DEFAULT_CANVAS), DEFAULT_CANVAS) : node);
             render();
             exportJson();
         };
@@ -305,7 +305,7 @@
             if (index < 0) return;
             const current = nodes[index];
             const zValue = Number((document.getElementById('nodeZIndex').value ?? '').trim() || 0);
-            const next = constrainNode({
+            const next = normalizeNodeWithParent(nodes, {
                 ...current,
                 parentId: document.getElementById('nodeParentId').value || 'root',
                 title: document.getElementById('nodeTitle').value,
@@ -331,7 +331,7 @@
             pushHistory();
             const meta = NODE_TYPE_META[type] || { label: '组件', defaultWidth: 160, defaultHeight: 60, defaultText: '组件内容' };
             const pos = computeInsertPosition(meta);
-            const node = constrainNode(createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId: 'root', name: meta.label, title: meta.label, text: meta.defaultText, x: pos.x, y: pos.y, width: meta.defaultWidth, height: meta.defaultHeight }), DEFAULT_CANVAS);
+            const node = normalizeNodeWithParent(nodes, createNode({ id: `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type, parentId: 'root', name: meta.label, title: meta.label, text: meta.defaultText, x: pos.x, y: pos.y, width: meta.defaultWidth, height: meta.defaultHeight }), DEFAULT_CANVAS);
             nodes = [...nodes, node];
             activeId = node.id;
             selectedIds = [node.id];
@@ -341,7 +341,7 @@
         };
         const insertPreset = (key, mode = 'append') => {
             pushHistory();
-            const presetNodes = buildTemplateNodes(key).map((node) => constrainNode(node, DEFAULT_CANVAS));
+            const presetNodes = buildTemplateNodes(key).map((node) => normalizeNodeWithParent(nodes, node, DEFAULT_CANVAS));
             nodes = mode === 'replace' ? presetNodes : [...nodes, ...presetNodes];
             activeId = presetNodes[0]?.id || activeId;
             selectedIds = activeId ? [activeId] : [];
@@ -463,7 +463,7 @@
             const index = nodes.findIndex((item) => item.id === activeId && item.type === 'table');
             if (index < 0) return;
             pushHistory();
-            nodes[index] = constrainNode(mutator(nodes[index]), DEFAULT_CANVAS);
+            nodes[index] = normalizeNodeWithParent(nodes, mutator(nodes[index]), DEFAULT_CANVAS);
             nodes = [...nodes];
             render();
             exportJson();
@@ -487,14 +487,14 @@
             render();
             exportJson();
         };
-        const copyNode = () => { const ids = selectedIds.length ? selectedIds : (activeId ? [activeId] : []); const source = nodes.filter((item) => ids.includes(item.id)); if (!source.length) return; pushHistory(); const copies = source.map((node) => constrainNode(duplicateNode(node), DEFAULT_CANVAS)); nodes = [...nodes, ...copies]; selectedIds = copies.map((item) => item.id); activeId = copies[copies.length - 1]?.id || null; render(); exportJson(); };
+        const copyNode = () => { const ids = selectedIds.length ? selectedIds : (activeId ? [activeId] : []); const source = nodes.filter((item) => ids.includes(item.id)); if (!source.length) return; pushHistory(); const copies = source.map((node) => normalizeNodeWithParent(nodes, duplicateNode(node), DEFAULT_CANVAS)); nodes = [...nodes, ...copies]; selectedIds = copies.map((item) => item.id); activeId = copies[copies.length - 1]?.id || null; render(); exportJson(); };
         const undo = () => { const state = history.pop(); if (!state) return; future.push(snapshot()); restore(state); };
         const redo = () => { const state = future.pop(); if (!state) return; history.push(snapshot()); restore(state); };
         const importJson = () => {
             try {
                 pushHistory();
                 const parsed = parseUnifiedJson(output.value);
-                nodes = (parsed.nodes || []).map((node) => constrainNode(node, DEFAULT_CANVAS));
+                nodes = (parsed.nodes || []).map((node) => normalizeNodeWithParent(parsed.nodes || [], node, DEFAULT_CANVAS));
                 const form = parsed.form || {};
                 document.getElementById('pageType').value = form.pageType || 'list';
                 document.getElementById('pageName').value = form.pageName || '未命名页面';
@@ -557,7 +557,7 @@
             if (index >= 0) {
                 pushHistory();
                 nodes[index] = field === 'title' ? updateNodeTitle(nodes[index], value) : updateNodeText(nodes[index], value);
-                nodes[index] = constrainNode(nodes[index], DEFAULT_CANVAS);
+                nodes[index] = normalizeNodeWithParent(nodes, nodes[index], DEFAULT_CANVAS);
                 nodes = [...nodes];
             }
             closeInlineEditor();
@@ -608,7 +608,7 @@
                 } else {
                     nodes[index] = updateTableCell(nodes[index], rowIndex, colIndex, value);
                 }
-                nodes[index] = constrainNode(nodes[index], DEFAULT_CANVAS);
+                nodes[index] = normalizeNodeWithParent(nodes, nodes[index], DEFAULT_CANVAS);
                 nodes = [...nodes];
             }
             closeInlineEditor();
@@ -650,17 +650,13 @@
                 nodes = nodes.map((node) => {
                     const origin = dragState.origins.find((item) => item.id === node.id);
                     if (!origin) return node;
-                    return {
-                        ...node,
-                        x: softSnap(origin.x + boundedDeltaX),
-                        y: softSnap(origin.y + boundedDeltaY),
-                    };
+                    return normalizeNodeWithParent(nodes, { ...node, x: softSnap(origin.x + boundedDeltaX), y: softSnap(origin.y + boundedDeltaY) }, DEFAULT_CANVAS);
                 });
             } else {
                 const index = nodes.findIndex((item) => item.id === dragState.id);
                 const origin = dragState.origins.find((item) => item.id === dragState.id);
                 if (index < 0 || !origin) return;
-                nodes[index] = updateNodeSize({ ...nodes[index], width: origin.width, height: origin.height }, deltaX, deltaY, DEFAULT_CANVAS);
+                nodes[index] = normalizeNodeWithParent(nodes, updateNodeSize({ ...nodes[index], width: origin.width, height: origin.height }, deltaX, deltaY, DEFAULT_CANVAS), DEFAULT_CANVAS);
                 guides = { x: null, y: null };
             }
             nodes = [...nodes];

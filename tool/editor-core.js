@@ -276,6 +276,37 @@ export function inferParentId(nodes, node) {
     return containers[0]?.id || node.parentId || 'root';
 }
 
+
+export function getParentNode(nodes, node) {
+    if (!node?.parentId || node.parentId === 'root') return null;
+    return nodes.find((item) => item.id === node.parentId) || null;
+}
+
+export function constrainNodeInParent(node, parent, padding = 12) {
+    if (!parent) return node;
+    const minX = parent.x + padding;
+    const minY = parent.y + padding;
+    const maxWidth = Math.max(GRID_SIZE * 3, parent.width - padding * 2);
+    const maxHeight = Math.max(GRID_SIZE * 3, parent.height - padding * 2);
+    const width = clamp(softSnap(node.width), GRID_SIZE * 3, maxWidth);
+    const height = clamp(softSnap(node.height), GRID_SIZE * 3, maxHeight);
+    const maxX = parent.x + parent.width - padding - width;
+    const maxY = parent.y + parent.height - padding - height;
+    return { ...node, width, height, x: clamp(softSnap(node.x), minX, maxX), y: clamp(softSnap(node.y), minY, maxY) };
+}
+
+export function resolveAutoParent(nodes, node) {
+    const inferred = inferParentId(nodes, node);
+    return inferred || 'root';
+}
+
+export function normalizeNodeWithParent(nodes, node, canvas = DEFAULT_CANVAS) {
+    const parentId = resolveAutoParent(nodes, node);
+    const parent = parentId === 'root' ? null : nodes.find((item) => item.id === parentId);
+    const next = { ...node, parentId };
+    return parent ? constrainNodeInParent(next, parent) : constrainNode(next, canvas);
+}
+
 export function buildUnifiedJson({ form, canvas = DEFAULT_CANVAS, nodes = [] }) {
     const normalizedNodes = nodes.map((node) => ({ ...node }));
     const tables = normalizedNodes.filter((node) => node.type === 'table');

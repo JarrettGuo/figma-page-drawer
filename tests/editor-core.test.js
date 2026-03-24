@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendTableColumn, appendTableRow, buildTemplateNodes, buildUnifiedJson, constrainNode, containsRect, createNode, DEFAULT_CANVAS, inferParentId, isPaginationInsideTable, normalizeTableConfig, PRESET_TEMPLATES, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
+import { appendTableColumn, appendTableRow, buildTemplateNodes, buildUnifiedJson, constrainNode, containsRect, createNode, DEFAULT_CANVAS, inferParentId, isPaginationInsideTable, normalizeNodeWithParent, normalizeTableConfig, PRESET_TEMPLATES, removeTableColumn, removeTableRow, updateNodePosition, updateNodeSize, updateTableCell, updateTableColumns } from '../tool/editor-core.js';
 
 describe('editor-core', () => {
     it('creates node with defaults', () => {
@@ -94,5 +94,14 @@ describe('editor-core', () => {
         const child = createNode({ id: 'input_child', type: 'input', x: 140, y: 160, width: 200, height: 44, parentId: 'root' });
         expect(containsRect(parent, child)).toBe(true);
         expect(inferParentId([parent, child], child)).toBe('card_parent');
+    });
+
+    it('constrains child node inside parent card bounds', () => {
+        const parent = createNode({ id: 'card_parent', type: 'card', x: 100, y: 100, width: 320, height: 180 });
+        const child = createNode({ id: 'input_child', type: 'input', x: 360, y: 240, width: 200, height: 44, parentId: 'card_parent' });
+        const normalized = normalizeNodeWithParent([parent, child], child, DEFAULT_CANVAS);
+        expect(normalized.parentId).toBe('card_parent');
+        expect(normalized.x + normalized.width).toBeLessThanOrEqual(parent.x + parent.width - 12);
+        expect(normalized.y + normalized.height).toBeLessThanOrEqual(parent.y + parent.height - 12);
     });
 });
